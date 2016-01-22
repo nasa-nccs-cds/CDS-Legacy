@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="esgfwpsapi_2.11-1.0-SNAPSHOT">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/lib/esgfwpsapi_2.11-1.0-SNAPSHOT.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/netcdfAll-4.6.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$PROJECT_DIR$/lib/esgfwpsapi_2.11-1.0-SNAPSHOT-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

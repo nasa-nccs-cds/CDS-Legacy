@@ -22,7 +22,6 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="SBT: aopalliance:aopalliance:1.0:jar" level="project" />
-    <orderEntry type="library" name="SBT: asm:asm:3.1:jar" level="project" />
     <orderEntry type="library" name="SBT: ch.qos.logback:logback-classic:1.1.2:jar" level="project" />
     <orderEntry type="library" name="SBT: ch.qos.logback:logback-core:1.1.2:jar" level="project" />
     <orderEntry type="library" name="SBT: com.clearspring.analytics:stream:2.7.0:jar" level="project" />
@@ -66,7 +65,6 @@
     <orderEntry type="library" name="SBT: commons-io:commons-io:2.4:jar" level="project" />
     <orderEntry type="library" name="SBT: commons-lang:commons-lang:2.5:jar" level="project" />
     <orderEntry type="library" name="SBT: commons-logging:commons-logging:1.1.1:jar" level="project" />
-    <orderEntry type="library" name="SBT: commons-net:commons-net:2.2:jar" level="project" />
     <orderEntry type="library" name="SBT: io.dropwizard.metrics:metrics-core:3.1.0:jar" level="project" />
     <orderEntry type="library" name="SBT: io.dropwizard.metrics:metrics-graphite:3.1.0:jar" level="project" />
     <orderEntry type="library" name="SBT: io.dropwizard.metrics:metrics-json:3.1.0:jar" level="project" />
@@ -115,9 +113,7 @@
     <orderEntry type="library" name="SBT: org.apache.spark:spark-unsafe_2.11:1.4.1:jar" level="project" />
     <orderEntry type="library" name="SBT: org.apache.zookeeper:zookeeper:3.4.5:jar" level="project" />
     <orderEntry type="library" name="SBT: org.codehaus.jackson:jackson-core-asl:1.9.11:jar" level="project" />
-    <orderEntry type="library" name="SBT: org.codehaus.jackson:jackson-jaxrs:1.8.3:jar" level="project" />
     <orderEntry type="library" name="SBT: org.codehaus.jackson:jackson-mapper-asl:1.9.11:jar" level="project" />
-    <orderEntry type="library" name="SBT: org.codehaus.jackson:jackson-xc:1.8.3:jar" level="project" />
     <orderEntry type="library" name="SBT: org.codehaus.jettison:jettison:1.1:jar" level="project" />
     <orderEntry type="library" name="SBT: org.eclipse.jetty.orbit:javax.servlet:3.0.0.v201112011016:jar" level="project" />
     <orderEntry type="library" name="SBT: org.jodd:jodd-core:3.6.3:jar" level="project" />
@@ -152,15 +148,6 @@
     <orderEntry type="library" name="SBT: stax:stax-api:1.0.1:jar" level="project" />
     <orderEntry type="library" name="SBT: xmlenc:xmlenc:0.52:jar" level="project" />
     <orderEntry type="module-library">
-      <library name="SBT: unmanaged-jars">
-        <CLASSES>
-          <root url="jar://$MODULE_DIR$/../../lib/netcdfAll-4.6.jar!/" />
-        </CLASSES>
-        <JAVADOC />
-        <SOURCES />
-      </library>
-    </orderEntry>
-    <orderEntry type="module-library">
       <library name="SBT: unmanaged-sources-and-docs">
         <CLASSES />
         <JAVADOC />
@@ -170,5 +157,20 @@
         </SOURCES>
       </library>
     </orderEntry>
+    <orderEntry type="library" name="SBT: asm:asm:3.2:jar" level="project" />
+    <orderEntry type="library" name="SBT: commons-net:commons-net:3.1:jar" level="project" />
+    <orderEntry type="library" name="SBT: org.codehaus.jackson:jackson-jaxrs:1.8.8:jar" level="project" />
+    <orderEntry type="library" name="SBT: org.codehaus.jackson:jackson-xc:1.8.8:jar" level="project" />
+    <orderEntry type="module-library">
+      <library name="SBT: unmanaged-jars">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/../../lib/cdas_2.11-1.0-SNAPSHOT.jar!/" />
+          <root url="jar://$MODULE_DIR$/../../lib/netcdfAll-4.6.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="library" name="esgfwpsapi_2.11-1.0-SNAPSHOT" level="project" />
   </component>
 </module>
