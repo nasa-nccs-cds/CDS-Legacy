@@ -3,9 +3,12 @@ package nccs.cds2.loaders
 import nccs.cds2.utilities.NetCDFUtils
 import nccs.esgf.process.DomainAxis
 import org.slf4j.Logger
-import ucar.nc2.NetcdfFile
+import ucar.nc2
+import ucar.nc2.{ NetcdfFile, Variable }
 import ucar.nc2.dataset.NetcdfDataset
-import ucar.ma2.Section
+import ucar.ma2
+import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 /**
   * Utility functions to create a multi-dimensional array from a NetCDF,
@@ -74,17 +77,35 @@ object NetCDFReader {
   def loadNetCDFFile(name: String, file: Array[Byte]): NetcdfDataset = {
     new NetcdfDataset(NetcdfFile.openInMemory(name, file))
   }
+  def getDimensionIndex( ncVariable: Variable, cds_dim_name: String ): Int = {
+    val dimension_names: List[String] = ncVariable.getDimensions().map( _.getShortName.toLowerCase ).toList
+    val dimension_name_opt: Option[String] = cds_dim_name match {
+      case "lon" => dimension_names.find( ( name: String ) => name.startsWith("lon") || name.startsWith("x") )
+      case "lat" => dimension_names.find( ( name: String ) => name.startsWith("lat") || name.startsWith("y") )
+      case "lev" => dimension_names.find( ( name: String ) => name.startsWith("lev") || name.startsWith("plev") || name.startsWith("z") )
+      case "time" => dimension_names.find( ( name: String ) => name.startsWith("t") )
+    }
+    dimension_name_opt match {
+      case Some(dimension_name) => ncVariable.findDimensionIndex(dimension_name)
+      case _ => throw new Exception("Can't locate dimension $cds_dim_name in variable " + ncVariable.getNameAndDimensions(true) )
+    }
+  }
 
-  def getSubset( base_shape: Section, subset_axes: List[DomainAxis] ): Section = {  // TODO: complete getSubset
-    new Section()
+  def getSubset( ncVariable: Variable, subset_axes: List[DomainAxis] ): java.util.List[ma2.Range] = {
+    val shape: Array[ma2.Range] = ncVariable.getRanges.asInstanceOf[Array[ma2.Range]]    // TODO: Fix this cast
+    for( axis <- subset_axes ) {
+      val dim_index = getDimensionIndex( ncVariable, axis.name )
+      shape(dim_index) = new ma2.Range( axis.start, axis.end, 1 )
+    }
+    shape.toList.asJava
   }
 
   def readArraySubset( varName: String, collection : Collection,  axes: List[DomainAxis] ): String = {
-    val ncFile = NetCDFUtils.loadNetCDFDataSet( collection.url )
+    val ncFile = NetCDFUtils.loadNetCDFDataSet( collection.getUrl( varName ) )
     val ncVariable = ncFile.findVariable(varName)
     if (ncVariable == null) throw new IllegalStateException("Variable '%s' was not loaded".format(varName))
-    val subset_section: Section = getSubset( ncVariable.getShapeAsSection, axes )
-    val result = ncVariable.read( subset_section )
+    val subsetted_ranges = getSubset( ncVariable, axes )
+    val result = ncVariable.read( subsetted_ranges )
     "test"                                       // TODO: return Array
   }
 

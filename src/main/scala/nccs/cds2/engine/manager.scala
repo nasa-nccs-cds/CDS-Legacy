@@ -33,7 +33,7 @@ class DataManager( val domainMap: Map[String,DomainContainer] ) {
     import nccs.cds2.loaders.NetCDFReader
     domainMap.get(data_source.domain) match {
       case Some(domain_container) =>
-        Collections.CreateIP.get( data_source.collection ) match {
+        Collections.CreateIP.get( data_source.collection.toLowerCase ) match {
           case Some(collection) =>
             dataArrays += ( uid -> NetCDFReader.readArraySubset( data_source.name, collection,  domain_container.axes ) )
           case None =>
