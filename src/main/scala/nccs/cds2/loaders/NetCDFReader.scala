@@ -111,6 +111,12 @@ object NetCDFReader {
     shape.toList
   }
 
+  def getArrayShape( array: ucar.ma2.Array ): List[Int] = {
+    var shape = mutable.ListBuffer[Int]()
+    for( ival <- array.getShape ) shape += ival
+    shape.toList
+  }
+
   def readArraySubset( varName: String, collection : Collection,  roi: List[DomainAxis] ): ucar.ma2.Array = {
     val t0 = System.nanoTime
     val ncFile = NetCDFUtils.loadNetCDFDataSet( collection.getUrl( varName ) )
@@ -119,8 +125,8 @@ object NetCDFReader {
     val subsetted_ranges = getSubset( ncVariable, collection, roi )
     val array = ncVariable.read( subsetted_ranges.asJava )
     val t1 = System.nanoTime
-    val array_shape = for( ival <- array.getShape ) yield ival  // TODO: Fix this
-    logger.info( s"Read $varName subset: " + subsetted_ranges.toString + ", shape = " + array_shape.toString + ", time = %.4f s".format( (t1-t0)/1e9 )  )
+    val array_shape = getArrayShape( array )
+    logger.info( "Read %s subset: %s, shape = %s, size = %d, time = %.4f s".format( varName, subsetted_ranges.toString, array_shape.toString, array.getSize, (t1-t0)/1e9 ) )
     array
   }
 
