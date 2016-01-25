@@ -26,7 +26,7 @@ class CDS2ExecutionManager {
 }
 
 class DataManager( val domainMap: Map[String,DomainContainer] ) {
-  var dataArrays = mutable.Map[String,String]()
+  var dataArrays = mutable.Map[String,ucar.ma2.Array]()
 
   def loadDataset( uid: String, data_source: DataSource ) = {
     import nccs.cds2.loaders.Collections

@@ -1,27 +1,27 @@
 package nccs.cds2.loaders
 
 object Collection { 
-  def apply( ctype: String, url: String, vars: List[String] = List(), axes: AxisNames ) = { new Collection(ctype,url,vars,axes) }
+  def apply( ctype: String, url: String, vars: List[String] = List(), axes: Option[AxisNames] = None ) = { new Collection(ctype,url,vars,axes) }
 }
-class Collection( val ctype: String, val url: String, val vars: List[String] = List(), val axes: AxisNames ) {
+class Collection( val ctype: String, val url: String, val vars: List[String] = List(), val axes: Option[AxisNames] ) {
   def getUrl( varName: String ) = {
     ctype match {
       case "dods" => s"$url/$varName.ncml"
-      case _ => throw new Exception( "Unrecognized collection type: $ctype")
+      case _ => throw new Exception( s"Unrecognized collection type: $ctype")
     }
   }
 }
 
 object AxisNames {
-  def apply( x: String, y: String, z: String, t: String ): AxisNames = {
-    val nameMap = Map( "x" -> x, "y" -> y, "z" -> z, "t" -> t )
-    new AxisNames( nameMap )
+  def apply( x: String = "", y: String = "", z: String = "", t: String = "" ): Option[AxisNames] = {
+    val nameMap = Map( 'x' -> x, 'y' -> y, 'z' -> z, 't' -> t )
+    Some( new AxisNames( nameMap ) )
   }
 }
-class AxisNames( val nameMap: Map[String,String]  ) {
-  def get( axis: String  ) = nameMap.get( axis ) match {
-    case Some(name) => name
-    case None=> throw new Exception( "Not an axis: $axis" )
+class AxisNames( val nameMap: Map[Char,String]  ) {
+  def apply( dimension: Char  ): Option[String] = nameMap.get( dimension ) match {
+    case Some(name) => if (name.isEmpty) None else Some(name)
+    case None=> throw new Exception( s"Not an axis: $dimension" )
   }
 }
 

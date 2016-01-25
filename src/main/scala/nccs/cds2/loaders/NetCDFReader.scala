@@ -2,11 +2,12 @@ package nccs.cds2.loaders
 
 import nccs.cds2.utilities.NetCDFUtils
 import nccs.esgf.process.DomainAxis
-import org.slf4j.Logger
+import org.slf4j.{LoggerFactory, Logger}
 import ucar.nc2
 import ucar.nc2.{ NetcdfFile, Variable }
 import ucar.nc2.dataset.NetcdfDataset
 import ucar.ma2
+import scala.collection.mutable
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 
@@ -17,7 +18,7 @@ import scala.collection.JavaConverters._
 object NetCDFReader {
 
   // Class logger
-  val LOG: Logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
+  val logger = LoggerFactory.getLogger("NetCDFReader")
 
   /**
     * Gets a multi-dimensional array from a NetCDF at some URI.
@@ -29,7 +30,7 @@ object NetCDFReader {
   def loadNetCDFNDVar(uri: String, variable: String): (Array[Double], Array[Int]) = {
     val netcdfFile = NetCDFUtils.loadNetCDFDataSet(uri)
     if (netcdfFile == null) {
-      LOG.warn("Dataset %s not found!".format(uri))
+      logger.warn("Dataset %s not found!".format(uri))
       return (Array(-9999), Array(1, 1))
     }
 
@@ -37,7 +38,7 @@ object NetCDFReader {
     val variableArray = coordinateArray._1
 
     if (variableArray.length < 1) {
-      LOG.warn("Variable '%s' in dataset at %s not found!".format(variable, uri))
+      logger.warn("Variable '%s' in dataset at %s not found!".format(variable, uri))
       return (Array(-9999), Array(1, 1))
     }
     coordinateArray
@@ -60,7 +61,7 @@ object NetCDFReader {
 
   def loadNetCDFNDVar(dataset: NetcdfDataset, variable: String): (Array[Double], Array[Int]) = {
     if (dataset == null) {
-      LOG.warn("Dataset %s not found!".format(variable) )
+      logger.warn("Dataset %s not found!".format(variable) )
       return (Array(-9999), Array(1, 1))
     }
 
@@ -68,7 +69,7 @@ object NetCDFReader {
     val variableArray = coordinateArray._1
 
     if (variableArray.length < 1) {
-      LOG.warn("Variable '%s' in dataset not found!".format(variable))
+      logger.warn("Variable '%s' in dataset not found!".format(variable))
       return (Array(-9999), Array(1, 1))
     }
     coordinateArray
@@ -77,8 +78,8 @@ object NetCDFReader {
   def loadNetCDFFile(name: String, file: Array[Byte]): NetcdfDataset = {
     new NetcdfDataset(NetcdfFile.openInMemory(name, file))
   }
-  def getDimensionIndex( ncVariable: Variable, cds_dim_name: String ): Int = {
-    val dimension_names: List[String] = ncVariable.getDimensions().map( _.getShortName.toLowerCase ).toList
+  def getDimensionIndex( ncVariable: Variable, cds_dim_name: String ): Option[Int] = {
+    val dimension_names: List[String] = ncVariable.getDimensionsString.split(' ').map( _.toLowerCase).toList
     val dimension_name_opt: Option[String] = cds_dim_name match {
       case "lon" => dimension_names.find( ( name: String ) => name.startsWith("lon") || name.startsWith("x") )
       case "lat" => dimension_names.find( ( name: String ) => name.startsWith("lat") || name.startsWith("y") )
@@ -86,27 +87,41 @@ object NetCDFReader {
       case "time" => dimension_names.find( ( name: String ) => name.startsWith("t") )
     }
     dimension_name_opt match {
-      case Some(dimension_name) => ncVariable.findDimensionIndex(dimension_name)
+      case Some(dimension_name) => ncVariable.findDimensionIndex(dimension_name) match { case -1 => None; case x  => Some(x) }
       case _ => throw new Exception("Can't locate dimension $cds_dim_name in variable " + ncVariable.getNameAndDimensions(true) )
     }
   }
 
-  def getSubset( ncVariable: Variable, subset_axes: List[DomainAxis] ): java.util.List[ma2.Range] = {
-    val shape: Array[ma2.Range] = ncVariable.getRanges.asInstanceOf[Array[ma2.Range]]    // TODO: Fix this cast
-    for( axis <- subset_axes ) {
-      val dim_index = getDimensionIndex( ncVariable, axis.name )
-      shape(dim_index) = new ma2.Range( axis.start, axis.end, 1 )
+  def getSubset( ncVariable: Variable, collection : Collection, roi: List[DomainAxis] ): List[ma2.Range] = {
+    val shape: mutable.ArrayBuffer[ma2.Range] = ncVariable.getRanges.to[mutable.ArrayBuffer]
+    for( axis <- roi ) {
+      val dim_index_opt: Option[Int] = collection.axes match {
+        case None =>  getDimensionIndex( ncVariable, axis.name )
+        case Some( axisNames ) =>
+          axisNames( axis.dimension ) match {
+            case Some(dimension) => Some( ncVariable.findDimensionIndex( dimension ) )
+            case None => None
+          }
+      }
+      dim_index_opt match {
+        case Some(dim_index) => shape.update( dim_index, new ma2.Range( axis.start, axis.end, 1 ) )
+        case None => None
+      }
     }
-    shape.toList.asJava
+    shape.toList
   }
 
-  def readArraySubset( varName: String, collection : Collection,  axes: List[DomainAxis] ): String = {
+  def readArraySubset( varName: String, collection : Collection,  roi: List[DomainAxis] ): ucar.ma2.Array = {
+    val t0 = System.nanoTime
     val ncFile = NetCDFUtils.loadNetCDFDataSet( collection.getUrl( varName ) )
     val ncVariable = ncFile.findVariable(varName)
     if (ncVariable == null) throw new IllegalStateException("Variable '%s' was not loaded".format(varName))
-    val subsetted_ranges = getSubset( ncVariable, axes )
-    val result = ncVariable.read( subsetted_ranges )
-    "test"                                       // TODO: return Array
+    val subsetted_ranges = getSubset( ncVariable, collection, roi )
+    val array = ncVariable.read( subsetted_ranges.asJava )
+    val t1 = System.nanoTime
+    val array_shape = for( ival <- array.getShape ) yield ival  // TODO: Fix this
+    logger.info( s"Read $varName subset: " + subsetted_ranges.toString + ", shape = " + array_shape.toString + ", time = %.4f s".format( (t1-t0)/1e9 )  )
+    array
   }
 
 }
@@ -118,7 +133,7 @@ object testNetCDF extends App {
   val dset : NetcdfDataset = NetCDFUtils.loadNetCDFDataSet(url)
   val ncVariable = dset.findVariable(varName)
   if (ncVariable == null) throw new IllegalStateException( s"Variable $varName was not loaded" )
-  println( ncVariable.getNameAndDimensions() )
+  println( ncVariable.getNameAndDimensions )
   val shape: Section = new Section( ncVariable.getShapeAsSection )
   println( "Full Shape: " + shape.toString + " is Immutable: " + shape.isImmutable )
   val levelRange = new Range( 10, 10 )
