@@ -1,5 +1,6 @@
 package nccs.cds2.loaders
 
+import nccs.cds2.engine.CDSVariable
 import nccs.cds2.utilities.NetCDFUtils
 import nccs.esgf.process.DomainAxis
 import org.slf4j.{LoggerFactory, Logger}
@@ -27,12 +28,13 @@ object NetCDFReader {
     val ncFile = NetCDFUtils.loadNetCDFDataSet( collection.getUrl( varName ) )
     val ncVariable = ncFile.findVariable(varName)
     if (ncVariable == null) throw new IllegalStateException("Variable '%s' was not loaded".format(varName))
+    val cdsVar = CDSVariable( ncVariable )
     val subsetted_ranges = getSubset( ncVariable, collection, roi )
     val array = ncVariable.read( subsetted_ranges.asJava )
     val ndArray: INDArray = NetCDFUtils.getNDArray( array )
     val t1 = System.nanoTime
-    val array_shape = NetCDFUtils.getArrayShape( array )
-    logger.info( "Read %s subset: %s, shape = %s, size = %d, time = %.4f s".format( varName, subsetted_ranges.toString, array_shape.toString, array.getSize, (t1-t0)/1e9 ) )
+    logger.info( " Variable = " + cdsVar.toString )
+    logger.info( "Read %s subset: %s, shape = %s, size = %d, time = %.4f s".format( varName, subsetted_ranges.toString, array.getShape.toList.toString, array.getSize, (t1-t0)/1e9 ) )
     ndArray
   }
 

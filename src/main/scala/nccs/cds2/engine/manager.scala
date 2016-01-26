@@ -48,7 +48,7 @@ class DataManager( val domainMap: Map[String,DomainContainer] ) {
 
 object SampleTaskRequests {
 
-  def getAnomalyTimeseries1: TaskRequest = {
+  def getAnomalyTimeseries: TaskRequest = {
     import nccs.esgf.process._
     val workflows = List[WorkflowContainer]( new WorkflowContainer( operations = List( new OperationContainer( identifier = "CWT.average~ivar#1",  name ="CWT.average", result = "ivar#1", inputs = List("v0"), optargs = Map("axis" -> "xy") )  ) ) )
     val variableMap = Map[String,DataContainer]( "v0" -> new DataContainer( uid="v0", source = Some(new DataSource( name = "hur", collection = "merra/mon/atmos", domain = "d0" ) ) ) )
@@ -66,7 +66,7 @@ object SampleTaskRequests {
 }
 
 object executionTest extends App {
-  val request = SampleTaskRequests.getCacheChunk
+  val request = SampleTaskRequests.getAnomalyTimeseries
   val run_args = Map[String,Any]()
   val cds2ExecutionManager = new CDS2ExecutionManager()
   val result = cds2ExecutionManager.execute( request, run_args )
