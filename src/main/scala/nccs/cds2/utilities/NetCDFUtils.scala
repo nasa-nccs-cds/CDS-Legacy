@@ -1,9 +1,11 @@
 package nccs.cds2.utilities
 
+import org.nd4j.linalg.api.ndarray.INDArray
 import org.slf4j.Logger
 import ucar.ma2
-import ucar.nc2.NetcdfFile
+import ucar.nc2.{Variable, NetcdfFile}
 import ucar.nc2.dataset.NetcdfDataset
+import scala.collection.mutable
 import scala.language.implicitConversions
 
 /**
@@ -16,81 +18,44 @@ object NetCDFUtils {
   // Class logger
   val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
 
-  /**
-    * Extracts a variable's data from a NetCDF.
-    *
-    * If the variable is not found then an Array with the element 0.0
-    * is returned with shape (1,1). Note that all dimensions of size 1 are eliminated.
-    * For example the array shape (21, 5, 1, 2) is reduced to (21, 5, 2) since the 3rd dimension
-    * only ranges over a single value.
-    *
-    * @param netcdfFile The NetCDF file.
-    * @param variable The variable whose data we want to extract.
-    * @return Data and shape arrays.
-    */
-  def netCDFArrayAndShape(netcdfFile: NetcdfDataset, variable: String): (Array[Double], Array[Int]) = {
-    val searchVariableArray = getNetCDFVariableArray(netcdfFile, variable)
-    if (searchVariableArray == null) {
-      logger.error("Variable '%s' not found. Can't create array. Returning empty array.".format(variable))
-      return (Array(0.0), Array(1, 1))
-    }
-    val nativeArray = convertMa2Arrayto1DJavaArray(searchVariableArray)
-    val shape = searchVariableArray.getShape.toList.filter(_ != 1).toArray
-    (nativeArray, shape)
+  def getArrayShape( array: ucar.ma2.Array ): List[Int] = {
+    var shape = mutable.ListBuffer[Int]()
+    for (ival <- array.getShape) shape += ival
+    shape.toList
   }
 
-  /**
-    * Converts the native ma2.Array from the NetCDF library
-    * to a one dimensional Java Array of Doubles.
-    *
-    * Two copies of the array are made, since NetCDF does not have any API
-    * to tell what type the arrays are. Once the initial array of the loading
-    * is completed, a type check is used to appropriately convert the values
-    * into doubles. This involves a second copy.
-    */
-  def convertMa2Arrayto1DJavaArray(ma2Array: ma2.Array): Array[Double] = {
-    var array: Array[Double] = Array(-123456789)
-    // First copy of array
-    val javaArray = ma2Array.copyTo1DJavaArray()
-
-    try {
-      // Second copy of Array
-      if (!javaArray.isInstanceOf[Array[Double]]) {
-        array = javaArray.asInstanceOf[Array[Float]].map(p => p.toDouble)
-      } else {
-        array = javaArray.asInstanceOf[Array[Double]]
-      }
-      for (i <- array.indices) if (array(i) == -9999.0) array(i) = 0.0
-    } catch {
-      case ex: Exception =>
-        println("Error while converting a netcdf.ucar.ma2 to a 1D array. Most likely occurred with casting")
+  def getNDArray( array: ucar.ma2.Array ): INDArray = {
+    import org.nd4j.linalg.factory.Nd4j
+    val t0 = System.nanoTime
+    val result = array.getElementType.toString match {
+      case "float" =>
+        val java_array = array.get1DJavaArray( array.getElementType ).asInstanceOf[Array[Float]]
+        Nd4j.create( java_array, array.getShape )
+      case "int" =>
+        val java_array = array.get1DJavaArray( array.getElementType ).asInstanceOf[Array[Int]]
+        Nd4j.create( java_array, array.getShape )
+      case "double" =>
+        val java_array = array.get1DJavaArray( array.getElementType ).asInstanceOf[Array[Double]]
+        Nd4j.create( java_array, array.getShape )
     }
-    array
+    val t1 = System.nanoTime
+    logger.info( "Converted java array to INDArray, shape = %s, time = %.2f ms".format( getArrayShape(array).toString, (t1-t0)/1e6 ) )
+    result
   }
 
-  /**
-    * Extracts a variable's data from a NetCDF file as an M2 array.
-    *
-    * @param netcdfFile the NetcdfDataSet to read from
-    * @param variable the variable whose array we want to extract
-    * @todo Ask why OCW hardcodes the latitude and longitude names
-    */
-  def getNetCDFVariableArray(netcdfFile: NetcdfDataset, variable: String): ma2.Array = {
-    var searchVariable: ma2.Array = null
-    try {
-      if (netcdfFile == null) throw new IllegalStateException("NetCDFDataset was not loaded")
-      val netcdfVal = netcdfFile.findVariable(variable)
-      if (netcdfVal == null) throw new IllegalStateException("Variable '%s' was not loaded".format(variable))
-      searchVariable = netcdfVal.read()
-    } catch {
-      case ex: Exception =>
-        logger.error("Variable '%s' not found when reading source %s.".format(variable, netcdfFile))
-        logger.info("Variables available: " + netcdfFile.getVariables)
-        logger.error(ex.getMessage)
+  def getDimensionIndex( ncVariable: Variable, cds_dim_name: String ): Option[Int] = {
+    val dimension_names: List[String] = ncVariable.getDimensionsString.split(' ').map( _.toLowerCase).toList
+    val dimension_name_opt: Option[String] = cds_dim_name match {
+      case "lon" => dimension_names.find( ( name: String ) => name.startsWith("lon") || name.startsWith("x") )
+      case "lat" => dimension_names.find( ( name: String ) => name.startsWith("lat") || name.startsWith("y") )
+      case "lev" => dimension_names.find( ( name: String ) => name.startsWith("lev") || name.startsWith("plev") || name.startsWith("z") )
+      case "time" => dimension_names.find( ( name: String ) => name.startsWith("t") )
     }
-    searchVariable
+    dimension_name_opt match {
+      case Some(dimension_name) => ncVariable.findDimensionIndex(dimension_name) match { case -1 => None; case x  => Some(x) }
+      case _ => throw new Exception("Can't locate dimension $cds_dim_name in variable " + ncVariable.getNameAndDimensions(true) )
+    }
   }
-
   /**
     * Loads a NetCDF Dataset from a URL.
     */

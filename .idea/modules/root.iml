@@ -18,6 +18,8 @@
       <sourceFolder url="file://$MODULE_DIR$/../../src/test/resources" type="java-test-resource" />
       <sourceFolder url="file://$MODULE_DIR$/../../target/scala-2.11/resource_managed/test" type="java-test-resource" />
       <excludeFolder url="file://$MODULE_DIR$/../../target" />
+      <excludeFolder url="file://$MODULE_DIR$/../../target/resolution-cache" />
+      <excludeFolder url="file://$MODULE_DIR$/../../target/streams" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
@@ -33,7 +35,6 @@
     <orderEntry type="library" name="SBT: com.fasterxml.jackson.core:jackson-databind:2.4.4:jar" level="project" />
     <orderEntry type="library" name="SBT: com.fasterxml.jackson.module:jackson-module-scala_2.11:2.4.4:jar" level="project" />
     <orderEntry type="library" name="SBT: com.google.code.findbugs:jsr305:1.3.9:jar" level="project" />
-    <orderEntry type="library" name="SBT: com.google.guava:guava:14.0.1:jar" level="project" />
     <orderEntry type="library" name="SBT: com.google.inject:guice:3.0:jar" level="project" />
     <orderEntry type="library" name="SBT: com.google.protobuf:protobuf-java:2.5.0:jar" level="project" />
     <orderEntry type="library" name="SBT: com.ning:compress-lzf:1.0.3:jar" level="project" />
@@ -57,7 +58,6 @@
     <orderEntry type="library" name="SBT: commons-beanutils:commons-beanutils:1.7.0:jar" level="project" />
     <orderEntry type="library" name="SBT: commons-beanutils:commons-beanutils-core:1.8.0:jar" level="project" />
     <orderEntry type="library" name="SBT: commons-cli:commons-cli:1.2:jar" level="project" />
-    <orderEntry type="library" name="SBT: commons-codec:commons-codec:1.5:jar" level="project" />
     <orderEntry type="library" name="SBT: commons-collections:commons-collections:3.2.1:jar" level="project" />
     <orderEntry type="library" name="SBT: commons-configuration:commons-configuration:1.6:jar" level="project" />
     <orderEntry type="library" name="SBT: commons-digester:commons-digester:1.8:jar" level="project" />
@@ -154,6 +154,19 @@
         <SOURCES>
           <root url="jar://$USER_HOME$/.ivy2/cache/org.apache.mesos/mesos/srcs/mesos-0.21.1-sources.jar!/" />
           <root url="jar://$USER_HOME$/.ivy2/cache/com.esotericsoftware.reflectasm/reflectasm/srcs/reflectasm-1.07-sources.jar!/" />
+          <root url="jar://$USER_HOME$/.ivy2/cache/com.github.fommil.netlib/netlib-native_system-osx-x86_64/srcs/netlib-native_system-osx-x86_64-1.1-sources.jar!/" />
+          <root url="jar://$USER_HOME$/.ivy2/cache/com.github.fommil.netlib/netlib-native_ref-linux-i686/srcs/netlib-native_ref-linux-i686-1.1-sources.jar!/" />
+          <root url="jar://$USER_HOME$/.ivy2/cache/com.github.fommil.netlib/netlib-native_ref-linux-armhf/srcs/netlib-native_ref-linux-armhf-1.1-sources.jar!/" />
+          <root url="jar://$USER_HOME$/.ivy2/cache/com.github.fommil.netlib/netlib-native_ref-linux-x86_64/srcs/netlib-native_ref-linux-x86_64-1.1-sources.jar!/" />
+          <root url="jar://$USER_HOME$/.ivy2/cache/com.github.fommil.netlib/netlib-native_system-linux-x86_64/srcs/netlib-native_system-linux-x86_64-1.1-sources.jar!/" />
+          <root url="jar://$USER_HOME$/.ivy2/cache/com.github.fommil.netlib/netlib-native_ref-osx-x86_64/srcs/netlib-native_ref-osx-x86_64-1.1-sources.jar!/" />
+          <root url="jar://$USER_HOME$/.ivy2/cache/com.github.fommil.netlib/netlib-native_ref-win-i686/srcs/netlib-native_ref-win-i686-1.1-sources.jar!/" />
+          <root url="jar://$USER_HOME$/.ivy2/cache/com.github.fommil.netlib/netlib-native_system-linux-armhf/srcs/netlib-native_system-linux-armhf-1.1-sources.jar!/" />
+          <root url="jar://$USER_HOME$/.ivy2/cache/com.github.fommil.netlib/netlib-native_system-linux-i686/srcs/netlib-native_system-linux-i686-1.1-sources.jar!/" />
+          <root url="jar://$USER_HOME$/.ivy2/cache/com.github.fommil.netlib/netlib-native_ref-win-x86_64/srcs/netlib-native_ref-win-x86_64-1.1-sources.jar!/" />
+          <root url="jar://$USER_HOME$/.ivy2/cache/com.github.fommil.netlib/netlib-native_system-win-x86_64/srcs/netlib-native_system-win-x86_64-1.1-sources.jar!/" />
+          <root url="jar://$USER_HOME$/.ivy2/cache/org.bytedeco/javacpp/srcs/javacpp-0.11-sources.jar!/" />
+          <root url="jar://$USER_HOME$/.ivy2/cache/com.github.fommil.netlib/netlib-native_system-win-i686/srcs/netlib-native_system-win-i686-1.1-sources.jar!/" />
         </SOURCES>
       </library>
     </orderEntry>
@@ -161,16 +174,49 @@
     <orderEntry type="library" name="SBT: commons-net:commons-net:3.1:jar" level="project" />
     <orderEntry type="library" name="SBT: org.codehaus.jackson:jackson-jaxrs:1.8.8:jar" level="project" />
     <orderEntry type="library" name="SBT: org.codehaus.jackson:jackson-xc:1.8.8:jar" level="project" />
+    <orderEntry type="library" name="SBT: com.github.fommil:jniloader:1.1:jar" level="project" />
+    <orderEntry type="library" name="SBT: com.github.fommil.netlib:core:1.1.2:jar" level="project" />
+    <orderEntry type="library" name="SBT: com.github.fommil.netlib:native_ref-java:1.1:jar" level="project" />
+    <orderEntry type="library" name="SBT: com.github.fommil.netlib:native_system-java:1.1:jar" level="project" />
+    <orderEntry type="library" name="SBT: com.github.fommil.netlib:netlib-native_ref-linux-armhf:1.1:natives:jar" level="project" />
+    <orderEntry type="library" name="SBT: com.github.fommil.netlib:netlib-native_ref-linux-i686:1.1:natives:jar" level="project" />
+    <orderEntry type="library" name="SBT: com.github.fommil.netlib:netlib-native_ref-linux-x86_64:1.1:natives:jar" level="project" />
+    <orderEntry type="library" name="SBT: com.github.fommil.netlib:netlib-native_ref-osx-x86_64:1.1:natives:jar" level="project" />
+    <orderEntry type="library" name="SBT: com.github.fommil.netlib:netlib-native_ref-win-i686:1.1:natives:jar" level="project" />
+    <orderEntry type="library" name="SBT: com.github.fommil.netlib:netlib-native_ref-win-x86_64:1.1:natives:jar" level="project" />
+    <orderEntry type="library" name="SBT: com.github.fommil.netlib:netlib-native_system-linux-armhf:1.1:natives:jar" level="project" />
+    <orderEntry type="library" name="SBT: com.github.fommil.netlib:netlib-native_system-linux-i686:1.1:natives:jar" level="project" />
+    <orderEntry type="library" name="SBT: com.github.fommil.netlib:netlib-native_system-linux-x86_64:1.1:natives:jar" level="project" />
+    <orderEntry type="library" name="SBT: com.github.fommil.netlib:netlib-native_system-osx-x86_64:1.1:natives:jar" level="project" />
+    <orderEntry type="library" name="SBT: com.github.fommil.netlib:netlib-native_system-win-i686:1.1:natives:jar" level="project" />
+    <orderEntry type="library" name="SBT: com.github.fommil.netlib:netlib-native_system-win-x86_64:1.1:natives:jar" level="project" />
+    <orderEntry type="library" name="SBT: com.google.code.findbugs:annotations:2.0.1:jar" level="project" />
+    <orderEntry type="library" name="SBT: com.google.guava:guava:18.0:jar" level="project" />
+    <orderEntry type="library" name="SBT: io.netty:netty-buffer:4.0.28.Final:jar" level="project" />
+    <orderEntry type="library" name="SBT: io.netty:netty-common:4.0.28.Final:jar" level="project" />
+    <orderEntry type="library" name="SBT: junit:junit:4.12:jar" level="project" />
+    <orderEntry type="library" name="SBT: net.sourceforge.f2j:arpack_combined_all:0.1:jar" level="project" />
+    <orderEntry type="library" name="SBT: org.hamcrest:hamcrest-core:1.3:jar" level="project" />
+    <orderEntry type="library" name="SBT: org.javassist:javassist:3.18.2-GA:jar" level="project" />
+    <orderEntry type="library" name="SBT: org.jblas:jblas:1.2.4:jar" level="project" />
+    <orderEntry type="library" name="SBT: org.nd4j:nd4j-api:0.4-rc3.8:jar" level="project" />
+    <orderEntry type="library" name="SBT: org.nd4j:nd4j-common:0.4-rc3.8:jar" level="project" />
+    <orderEntry type="library" name="SBT: org.nd4j:nd4j-x86:0.4-rc3.8:jar" level="project" />
+    <orderEntry type="library" name="SBT: org.nd4j:nd4s_2.11:0.4-rc3.8:jar" level="project" />
+    <orderEntry type="library" name="SBT: org.projectlombok:lombok:1.16.4:jar" level="project" />
+    <orderEntry type="library" name="SBT: org.reflections:reflections:0.9.10:jar" level="project" />
+    <orderEntry type="library" name="SBT: org.scalatest:scalatest_2.11:2.2.4:jar" level="project" />
     <orderEntry type="module-library">
       <library name="SBT: unmanaged-jars">
         <CLASSES>
-          <root url="jar://$MODULE_DIR$/../../lib/cdas_2.11-1.0-SNAPSHOT.jar!/" />
+          <root url="jar://$MODULE_DIR$/../../lib/esgfwpsapi_2.11-1.0-SNAPSHOT.jar!/" />
+          <root url="jar://$MODULE_DIR$/../../lib/esgfwpsapi_2.11-1.0-SNAPSHOT-sources.jar!/" />
           <root url="jar://$MODULE_DIR$/../../lib/netcdfAll-4.6.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
       </library>
     </orderEntry>
-    <orderEntry type="library" name="esgfwpsapi_2.11-1.0-SNAPSHOT" level="project" />
+    <orderEntry type="library" name="SBT: commons-codec:commons-codec:1.5:jar" level="project" />
   </component>
 </module>

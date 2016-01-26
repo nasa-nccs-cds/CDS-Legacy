@@ -1,6 +1,7 @@
 package nccs.cds2.engine
 import nccs.esgf.process._
 import nccs.esgf.engine.PluginExecutionManager
+import org.nd4j.linalg.api.ndarray.INDArray
 import org.slf4j.LoggerFactory
 import scala.collection.mutable
 import nccs.cds2.utilities.cdsutils
@@ -26,7 +27,7 @@ class CDS2ExecutionManager {
 }
 
 class DataManager( val domainMap: Map[String,DomainContainer] ) {
-  var dataArrays = mutable.Map[String,ucar.ma2.Array]()
+  var dataArrays = mutable.Map[String,INDArray]()
 
   def loadDataset( uid: String, data_source: DataSource ) = {
     import nccs.cds2.loaders.Collections
@@ -49,16 +50,24 @@ object SampleTaskRequests {
 
   def getAnomalyTimeseries1: TaskRequest = {
     import nccs.esgf.process._
-
     val workflows = List[WorkflowContainer]( new WorkflowContainer( operations = List( new OperationContainer( identifier = "CWT.average~ivar#1",  name ="CWT.average", result = "ivar#1", inputs = List("v0"), optargs = Map("axis" -> "xy") )  ) ) )
     val variableMap = Map[String,DataContainer]( "v0" -> new DataContainer( uid="v0", source = Some(new DataSource( name = "hur", collection = "merra/mon/atmos", domain = "d0" ) ) ) )
     val domainMap = Map[String,DomainContainer]( "d0" -> new DomainContainer( name = "d0", axes = cdsutils.flatlist( DomainAxis("lev",1,1), DomainAxis("lat",100,100), DomainAxis("lon",100,100) ) ) )
     new TaskRequest( "CWT.anomaly",  workflows, variableMap, domainMap )
   }
+
+  def getCacheChunk: TaskRequest = {
+    import nccs.esgf.process._
+    val workflows = List[WorkflowContainer]( new WorkflowContainer( operations = List( )  ) )
+    val variableMap = Map[String,DataContainer]( "v0" -> new DataContainer( uid="v0", source = Some(new DataSource( name = "hur", collection = "merra/mon/atmos", domain = "d0" ) ) ) )
+    val domainMap = Map[String,DomainContainer]( "d0" -> new DomainContainer( name = "d0", axes = cdsutils.flatlist( DomainAxis("lev",1,1) ) ) )
+    new TaskRequest( "CWT.cache",  workflows, variableMap, domainMap )
+  }
+
 }
 
 object executionTest extends App {
-  val request = SampleTaskRequests.getAnomalyTimeseries1
+  val request = SampleTaskRequests.getCacheChunk
   val run_args = Map[String,Any]()
   val cds2ExecutionManager = new CDS2ExecutionManager()
   val result = cds2ExecutionManager.execute( request, run_args )

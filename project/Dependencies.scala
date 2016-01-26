@@ -45,7 +45,9 @@ object Dependencies {
 
   val spark = Seq( sparkSQL )
 
-  val ndarray = Seq( cdm, clcommon, netcdf4, nd4s, nd4j, opendap, httpservices, udunits )
+  val ndarray = Seq( nd4s, nd4j )
+
+  val netcdf = Seq( cdm, clcommon, netcdf4, opendap, httpservices, udunits )
 }
 
 
