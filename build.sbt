@@ -19,7 +19,7 @@ libraryDependencies ++= Dependencies.scala
 
 libraryDependencies ++= Dependencies.ndarray
 
-libraryDependencies ++= Dependencies.spark
+// libraryDependencies ++= Dependencies.spark
 
 
 
