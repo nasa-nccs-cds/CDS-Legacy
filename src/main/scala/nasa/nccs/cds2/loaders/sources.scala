@@ -1,4 +1,4 @@
-package nccs.cds2.loaders
+package nasa.nccs.cds2.loaders
 
 object Collection { 
   def apply( ctype: String, url: String, vars: List[String] = List(), axes: Option[AxisNames] = None ) = { new Collection(ctype,url,vars,axes) }

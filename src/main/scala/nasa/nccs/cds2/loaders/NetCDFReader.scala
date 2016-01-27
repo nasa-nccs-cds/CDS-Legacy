@@ -1,7 +1,7 @@
-package nccs.cds2.loaders
+package nasa.nccs.cds2.loaders
 
-import nccs.cds2.engine.CDSVariable
-import nccs.cds2.utilities.NetCDFUtils
+import nasa.nccs.cds2.engine.CDSVariable
+import nasa.nccs.cds2.utilities.NetCDFUtils
 import nccs.esgf.process.DomainAxis
 import org.slf4j.{LoggerFactory, Logger}
 import ucar.nc2
@@ -28,7 +28,7 @@ object NetCDFReader {
     val ncFile = NetCDFUtils.loadNetCDFDataSet( collection.getUrl( varName ) )
     val ncVariable = ncFile.findVariable(varName)
     if (ncVariable == null) throw new IllegalStateException("Variable '%s' was not loaded".format(varName))
-    val cdsVar = CDSVariable( ncVariable )
+    val cdsVar = CDSVariable( ncFile, ncVariable )
     val subsetted_ranges = getSubset( ncVariable, collection, roi )
     val array = ncVariable.read( subsetted_ranges.asJava )
     val ndArray: INDArray = NetCDFUtils.getNDArray( array )

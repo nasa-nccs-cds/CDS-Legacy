@@ -1,10 +1,10 @@
-package nccs.cds2.engine
+package nasa.nccs.cds2.engine
 import nccs.esgf.process._
 import nccs.esgf.engine.PluginExecutionManager
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.slf4j.LoggerFactory
 import scala.collection.mutable
-import nccs.cds2.utilities.cdsutils
+import nasa.nccs.cds2.utilities.cdsutils
 
 object cds2PluginExecutionManager extends PluginExecutionManager {
   val cds2ExecutionManager = new CDS2ExecutionManager()
@@ -30,8 +30,8 @@ class DataManager( val domainMap: Map[String,DomainContainer] ) {
   var dataArrays = mutable.Map[String,INDArray]()
 
   def loadDataset( uid: String, data_source: DataSource ) = {
-    import nccs.cds2.loaders.Collections
-    import nccs.cds2.loaders.NetCDFReader
+    import nasa.nccs.cds2.loaders.Collections
+    import nasa.nccs.cds2.loaders.NetCDFReader
     domainMap.get(data_source.domain) match {
       case Some(domain_container) =>
         Collections.CreateIP.get( data_source.collection.toLowerCase ) match {

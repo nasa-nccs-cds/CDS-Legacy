@@ -1,4 +1,4 @@
-package nccs.cds2.utilities
+package nasa.nccs.cds2.utilities
 
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.slf4j.Logger

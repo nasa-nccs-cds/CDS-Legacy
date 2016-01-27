@@ -1,4 +1,4 @@
-package nccs.cds2.utilities
+package nasa.nccs.cds2.utilities
 
 
 object cdsutils {
