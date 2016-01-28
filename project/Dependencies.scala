@@ -3,7 +3,7 @@ import sbt._
 
 object Version {
   val hadoop    = "2.6.0"
-  val logback   = "1.1.2"
+  val logback   = "1.1.3"
   val mockito   = "1.10.19"
   val scala     = "2.11.7"
   val scalaTest = "2.2.4"
@@ -41,11 +41,13 @@ object Dependencies {
     scalaTest      % "test",
     mockitoAll     % "test"
   )
-  val scala = Seq( logbackClassic, slf4jApi, scalaxml, scalaparser )
+  val scala = Seq( logbackClassic )
 
   val spark = Seq( sparkSQL )
 
-  val ndarray = Seq( cdm, clcommon, netcdf4, nd4s, nd4j, opendap, httpservices, udunits )
+  val ndarray = Seq( nd4s, nd4j )
+
+  val netcdf = Seq( cdm, clcommon, netcdf4, opendap, httpservices, udunits )
 }
 
 
