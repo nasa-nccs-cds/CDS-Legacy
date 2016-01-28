@@ -59,19 +59,6 @@ object NetCDFUtils {
   /**
     * Loads a NetCDF Dataset from a URL.
     */
-  def loadNetCDFDataSet(url: String): NetcdfDataset = {
-    NetcdfDataset.setUseNaNs(false)
-    try {
-      NetcdfDataset.openDataset(url)
-    } catch {
-      case e: java.io.IOException =>
-        logger.error("Couldn't open dataset %s".format(url))
-        throw e
-      case ex: Exception =>
-        logger.error("Something went wrong while reading %s".format(url))
-        throw ex
-    }
-  }
 
 //  /**
 //    * Loads a NetCDF Dataset from HDFS.

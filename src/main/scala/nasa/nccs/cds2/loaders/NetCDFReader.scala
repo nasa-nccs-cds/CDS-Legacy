@@ -1,6 +1,6 @@
 package nasa.nccs.cds2.loaders
 
-import nasa.nccs.cds2.engine.CDSVariable
+import nasa.nccs.cds2.cdm
 import nasa.nccs.cds2.utilities.NetCDFUtils
 import nccs.esgf.process.DomainAxis
 import org.slf4j.{LoggerFactory, Logger}
@@ -25,10 +25,12 @@ object NetCDFReader {
 
   def readArraySubset( varName: String, collection : Collection,  roi: List[DomainAxis] ): INDArray = {
     val t0 = System.nanoTime
-    val ncFile = NetCDFUtils.loadNetCDFDataSet( collection.getUrl( varName ) )
-    val ncVariable = ncFile.findVariable(varName)
+    val ncDataset: NetcdfDataset = NetCDFUtils.loadNetCDFDataSet( collection.getUrl( varName ) )
+    val coordSystems = ncDataset.getCoordinateSystems
+    val coordAxes = ncDataset.getCoordinateAxes
+    val ncVariable = ncDataset.findVariable(varName)
     if (ncVariable == null) throw new IllegalStateException("Variable '%s' was not loaded".format(varName))
-    val cdsVar = CDSVariable( ncFile, ncVariable )
+    val cdsVar = cdm.CDSVariable( ncDataset, ncVariable )
     val subsetted_ranges = getSubset( ncVariable, collection, roi )
     val array = ncVariable.read( subsetted_ranges.asJava )
     val ndArray: INDArray = NetCDFUtils.getNDArray( array )
