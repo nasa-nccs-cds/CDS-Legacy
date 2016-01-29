@@ -2,7 +2,7 @@ package nasa.nccs.cds2.loaders
 
 import nasa.nccs.cds2.cdm
 import nasa.nccs.cds2.utilities.NetCDFUtils
-import nccs.esgf.process.DomainAxis
+import nasa.nccs.esgf.process.DomainAxis
 import org.slf4j.{LoggerFactory, Logger}
 import ucar.nc2
 import ucar.nc2.{ NetcdfFile, Variable }

@@ -1,6 +1,6 @@
 package nasa.nccs.cds2.engine
-import nccs.esgf.process._
-import nccs.esgf.engine.PluginExecutionManager
+import nasa.nccs.esgf.process._
+import nasa.nccs.esgf.engine.PluginExecutionManager
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.slf4j.LoggerFactory
 import scala.collection.mutable

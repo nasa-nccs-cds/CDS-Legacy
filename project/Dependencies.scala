@@ -29,6 +29,8 @@ object Library {
   val opendap        = "edu.ucar"           % "opendap"         % "2.2.2"
   val httpservices   = "edu.ucar"           %  "httpservices"   % "4.6.0"
   val udunits        = "edu.ucar"           %  "udunits"        % "4.6.0"
+  val joda           = "joda-time"          % "joda-time"       % "2.8.1"
+  val natty          = "com.joestelmach"    % "natty"           % "0.11"
 }
 
 object Dependencies {
@@ -41,13 +43,13 @@ object Dependencies {
     scalaTest      % "test",
     mockitoAll     % "test"
   )
-  val scala = Seq( logbackClassic )
+  val scala = Seq( logbackClassic, joda, natty )
 
   val spark = Seq( sparkSQL )
 
   val ndarray = Seq( nd4s, nd4j )
 
-  val netcdf = Seq( cdm, clcommon, netcdf4, opendap, httpservices, udunits )
+  val netcdf = Seq( cdm, clcommon, netcdf4, opendap, httpservices, udunits )  // Currently unmanaged
 }
 
 

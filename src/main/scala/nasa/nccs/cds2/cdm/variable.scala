@@ -3,6 +3,7 @@ package nasa.nccs.cds2.cdm
 import nasa.nccs.cds2.cdm
 import nasa.nccs.cds2.loaders.Collection
 import java.util.Date
+import nasa.nccs.cds2.utilities.cdsutils
 import ucar.nc2.time.{ CalendarDate, CalendarDateRange }
 import nasa.nccs.cds2.utilities.NetCDFUtils
 import nasa.nccs.esgf.process.DomainAxis
@@ -51,13 +52,13 @@ class CDSVariable( val name: String, val dataset: CDSDataset, val ncVariable: nc
                       coordAxis match {
                         case coordAxis1DTime: CoordinateAxis1DTime =>
                           val date_range: CalendarDateRange = coordAxis1DTime.getCalendarDateRange()
-                          val start_date: CalendarDate = cdsutils.parseDate(axis.start)
+                          val start_date: CalendarDate = cdsutils.parseDate(axis.start.toString)
                           if (!date_range.includes(start_date)) {
 
                           }
                           val start = coordAxis1DTime.findTimeIndexFromCalendarDate(start_date)
-                          val end_date: CalendarDate = cdsutils.parseDate(axis.end)
-                          val start = coordAxis1DTime.findTimeIndexFromCalendarDate(end_date)
+                          val end_date: CalendarDate = cdsutils.parseDate(axis.end.toString)
+                          val end = coordAxis1DTime.findTimeIndexFromCalendarDate(end_date)
                         case _ => throw new IllegalStateException("Can't process time axis type: " + coordAxis.getClass.getName )
                       }
                     case _ =>
@@ -72,9 +73,9 @@ class CDSVariable( val name: String, val dataset: CDSDataset, val ncVariable: nc
                           }
                           val end: Int = coordAxis1D.findCoordElement(axis.end) match {
                             case -1 =>
-                              val grid_end = coordAxis1D.getCoordValue( coordAxis1D.getSize-1 )
+                              val grid_end = coordAxis1D.getCoordValue( coordAxis1D.getSize.toInt-1 )
                               logger.warn( "Axis %s: ROI End value %s outside of grid area, resetting to grid end: %f".format(coordAxis.getShortName,axis.end.toString, grid_end ))
-                              coordAxis1D.getNumElements-1
+                              coordAxis1D.getSize.toInt-1
                             case x=> x
                           }
                           assert(end > start, "Coordinate bounds appear to be inverted: start = %s, end = %s".format(axis.start.toString, axis.end.toString ))
