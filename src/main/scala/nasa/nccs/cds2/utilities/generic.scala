@@ -1,27 +1,32 @@
 package nasa.nccs.cds2.utilities
-
 import ucar.nc2.time.CalendarDate
-
+import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
+import scala.collection.mutable
 
 object cdsutils {
-  import com.joestelmach.natty
 
   def flatlist[T]( values: Option[T]* ): List[T] = values.flatten.toList
 
   def findNonNull[T]( values: T* ): Option[T] = values.toList.find( _ != null )
 
-  def parseDate( input: String ): CalendarDate = {
-    val parser = new natty.Parser()
-    val groups = parser.parse(input)
-    for( group <- groups ) {
-      println(".") //val dates = group.toString // getDates
+  object dateTimeParser {
+    import com.joestelmach.natty
+    private val parser = new natty.Parser()
+
+    def parse(input: String): CalendarDate = {
+      val caldates = mutable.ListBuffer[CalendarDate]()
+      val groups = parser.parse(input).toList
+      for (group: natty.DateGroup <- groups; date: java.util.Date <- group.getDates.toList) caldates += CalendarDate.of(date)
+      assert( caldates.size == 1, " DateTime Parser Error: parsing '%s'".format(input) )
+      caldates.head
     }
-    new CalendarDate()
   }
 }
 
 object dateParseTest extends App {
-    val value = cdsutils.parseDate( "10/10/1998 5:00")
+  val caldate:CalendarDate = cdsutils.dateTimeParser.parse( "10/10/1998 5:00 GMT")
+  println( caldate.toString )
 }
 
 

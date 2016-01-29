@@ -27,16 +27,15 @@ class CDS2ExecutionManager {
 }
 
 class DataManager( val domainMap: Map[String,DomainContainer] ) {
-  var dataArrays = mutable.Map[String,INDArray]()
+  var dataArrays = mutable.Map[String,String]() // mutable.Map[String,INDArray]()
 
   def loadDataset( uid: String, data_source: DataSource ) = {
     import nasa.nccs.cds2.loaders.Collections
-    import nasa.nccs.cds2.loaders.NetCDFReader
     domainMap.get(data_source.domain) match {
       case Some(domain_container) =>
         Collections.CreateIP.get( data_source.collection.toLowerCase ) match {
           case Some(collection) =>
-            dataArrays += ( uid -> NetCDFReader.readArraySubset( data_source.name, collection,  domain_container.axes ) )
+            dataArrays += ( uid -> "TODO: INDARRAY" ) // TODO: fill this out;   OLD: NetCDFReader.readArraySubset( data_source.name, collection,  domain_container.axes ) )
           case None =>
             throw new Exception( "Undefined collection for dataset " + data_source.name + ", collection = " + data_source.collection )
         }
