@@ -1,7 +1,6 @@
 package nasa.nccs.cds2.engine
 
 import nasa.nccs.cds2.cdm
-import nasa.nccs.cds2.cdm.{SubsetData, CDSDataset}
 import nasa.nccs.cds2.loaders.Collections
 import nasa.nccs.esgf.process._
 import nasa.nccs.esgf.engine.PluginExecutionManager
@@ -25,13 +24,14 @@ class CDS2ExecutionManager {
   def execute( request: TaskRequest, run_args: Map[String,Any] ): xml.Elem = {
     logger.info("Execute { request: " + request.toString + ", runargs: " + run_args.toString + "}"  )
     val data_manager = new DataManager( request.domainMap )
-    for( data_container <- request.variableMap.values; if data_container.isSource )  data_manager.loadDataset( data_container.uid, data_container.getSource )
+    for( data_container <- request.variableMap.values; if data_container.isSource )  data_manager.getVariableData( data_container.uid, data_container.getSource )
     request.toXml
   }
 }
 
 class DataManager( val domainMap: Map[String,DomainContainer] ) {
-  var datasets = mutable.Map[String,cdm.CDSDataset]() // mutable.Map[String,INDArray]()
+  var datasets = mutable.Map[String,cdm.CDSDataset]()
+  var subsets = mutable.Map[String,cdm.SubsetData]()
 
   def getDataset( data_source: DataSource ): cdm.CDSDataset = {
     Collections.CreateIP.get(data_source.collection.toLowerCase) match {
@@ -40,7 +40,7 @@ class DataManager( val domainMap: Map[String,DomainContainer] ) {
         datasets.get(dataset_uid) match {
           case Some(dataset) => dataset
           case None =>
-            val dataset: cdm.CDSDataset = CDSDataset.load(collection, data_source.name)
+            val dataset: cdm.CDSDataset = cdm.CDSDataset.load(collection, data_source.name)
             datasets += dataset_uid -> dataset
             dataset
         }
@@ -49,14 +49,20 @@ class DataManager( val domainMap: Map[String,DomainContainer] ) {
     }
   }
 
-  def loadVariableData( uid: String, data_source: DataSource ): SubsetData = {
-    val dataset: cdm.CDSDataset = getDataset( data_source )
-    domainMap.get(data_source.domain) match {
-      case Some(domain_container) =>
-        val variable = dataset.loadVariable( data_source.name )
-        variable.loadRoi(domain_container.axes)
+  def getVariableData(uid: String, data_source: DataSource): cdm.SubsetData = {
+    subsets.get(uid) match {
+      case Some(subset) => subset
       case None =>
-        throw new Exception( "Undefined domain for dataset " + data_source.name + ", domain = " + data_source.domain )
+        val dataset: cdm.CDSDataset = getDataset(data_source)
+        domainMap.get(data_source.domain) match {
+          case Some(domain_container) =>
+            val variable = dataset.loadVariable(data_source.name)
+            val subsetData: cdm.SubsetData = variable.loadRoi(domain_container.axes)
+            subsets += uid -> subsetData
+            subsetData
+          case None =>
+            throw new Exception("Undefined domain for dataset " + data_source.name + ", domain = " + data_source.domain)
+        }
     }
   }
 }

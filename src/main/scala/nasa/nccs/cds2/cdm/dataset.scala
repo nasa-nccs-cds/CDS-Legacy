@@ -19,7 +19,7 @@ object CDSDataset {
   val logger = org.slf4j.LoggerFactory.getLogger("nasa.nccs.cds2.cdm.dataset")
 
   def load( collection: Collection, varName: String = "" ) = {
-    val uri = collection.getUrl( varName )
+    val uri = collection.getUri( varName )
     val ncDataset: NetcdfDataset = loadNetCDFDataSet( uri )
     val coordSystems: List[CoordinateSystem] = ncDataset.getCoordinateSystems.toList
     assert( coordSystems.size <= 1, "Multiple coordinate systems for one dataset is not supported" )
