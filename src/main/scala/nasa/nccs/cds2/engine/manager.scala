@@ -1,4 +1,8 @@
 package nasa.nccs.cds2.engine
+
+import nasa.nccs.cds2.cdm
+import nasa.nccs.cds2.cdm.{SubsetData, CDSDataset}
+import nasa.nccs.cds2.loaders.Collections
 import nasa.nccs.esgf.process._
 import nasa.nccs.esgf.engine.PluginExecutionManager
 import org.nd4j.linalg.api.ndarray.INDArray
@@ -27,18 +31,30 @@ class CDS2ExecutionManager {
 }
 
 class DataManager( val domainMap: Map[String,DomainContainer] ) {
-  var dataArrays = mutable.Map[String,String]() // mutable.Map[String,INDArray]()
+  var datasets = mutable.Map[String,cdm.CDSDataset]() // mutable.Map[String,INDArray]()
 
-  def loadDataset( uid: String, data_source: DataSource ) = {
-    import nasa.nccs.cds2.loaders.Collections
+  def getDataset( data_source: DataSource ): cdm.CDSDataset = {
+    Collections.CreateIP.get(data_source.collection.toLowerCase) match {
+      case Some(collection) =>
+        val dataset_uid = collection.getUri(data_source.name)
+        datasets.get(dataset_uid) match {
+          case Some(dataset) => dataset
+          case None =>
+            val dataset: cdm.CDSDataset = CDSDataset.load(collection, data_source.name)
+            datasets += dataset_uid -> dataset
+            dataset
+        }
+      case None =>
+        throw new Exception("Undefined collection for dataset " + data_source.name + ", collection = " + data_source.collection)
+    }
+  }
+
+  def loadVariableData( uid: String, data_source: DataSource ): SubsetData = {
+    val dataset: cdm.CDSDataset = getDataset( data_source )
     domainMap.get(data_source.domain) match {
       case Some(domain_container) =>
-        Collections.CreateIP.get( data_source.collection.toLowerCase ) match {
-          case Some(collection) =>
-            dataArrays += ( uid -> "TODO: INDARRAY" ) // TODO: fill this out;   OLD: NetCDFReader.readArraySubset( data_source.name, collection,  domain_container.axes ) )
-          case None =>
-            throw new Exception( "Undefined collection for dataset " + data_source.name + ", collection = " + data_source.collection )
-        }
+        val variable = dataset.loadVariable( data_source.name )
+        variable.loadRoi(domain_container.axes)
       case None =>
         throw new Exception( "Undefined domain for dataset " + data_source.name + ", domain = " + data_source.domain )
     }

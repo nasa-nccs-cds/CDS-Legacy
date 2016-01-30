@@ -5,6 +5,7 @@ import nasa.nccs.cds2.loaders.Collection
 import java.util.Date
 import nasa.nccs.cds2.utilities.cdsutils
 import nasa.nccs.esgf.utilities.numbers.GenericNumber
+import org.nd4j.linalg.indexing.{NDArrayIndex, INDArrayIndex}
 import ucar.nc2.time.{CalendarDate, CalendarDateRange}
 import nasa.nccs.esgf.process.DomainAxis
 import org.nd4j.linalg.api.ndarray.INDArray
@@ -15,13 +16,9 @@ import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
-object BoundsRole extends Enumeration {
-  val Start, End = Value
-}
+object BoundsRole extends Enumeration { val Start, End = Value }
 
-object CDSVariable {
-
-}
+object CDSVariable { }
 
 class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2.Variable) {
   val logger = org.slf4j.LoggerFactory.getLogger("nasa.nccs.cds2.cdm.CDSVariable")
@@ -163,12 +160,40 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
     subset
   }
 
-  def findSubset( requestedSection: ma2.Section ): Option[SubsetData] = {
-    val validSections = subsets.filter( _.roiSection.contains(requestedSection) )
-    validSections.size match { case 0 => None; case _ => Some( validSections.minBy( _.roiSection.computeSize ) ) }
+  def findSubset( requestedSection: ma2.Section, copy: Boolean=false ): Option[SubsetData] = {
+    val validSubsets = subsets.filter( _.roiSection.contains(requestedSection) )
+    validSubsets.size match {
+      case 0 => None;
+      case _ => Some( validSubsets.minBy( _.roiSection.computeSize ).cutNewSubset(requestedSection, copy ) )
+    }
+  }
+}
+
+object SubsetData {
+  def sectionToIndices( section: ma2.Section ): List[INDArrayIndex] = {
+    val arrayIndices = mutable.ListBuffer[INDArrayIndex]()
+    for( range <- section.getRanges ) arrayIndices += NDArrayIndex.interval( range.first, range.last )
+    arrayIndices.toList
   }
 }
 
 class SubsetData( val roiSection: ma2.Section, val ndArray: INDArray ) {
+
   override def toString = { "SubsetData: shape = %s, section = %s".format( ndArray.shape.toString, roiSection.toString ) }
+
+  def cutNewSubset( newSection: ma2.Section, copy: Boolean ): SubsetData = {
+    if (roiSection.equals( newSection )) this
+    else {
+      val relativeSection = newSection.shiftOrigin( roiSection )
+      val newDataArray = ndArray.get( SubsetData.sectionToIndices(relativeSection):_* )
+      new SubsetData( newSection, if(copy) newDataArray.dup() else newDataArray )
+    }
+  }
+}
+
+object sectionTest extends App {
+  val s0 = new ma2.Section( Array(10,10,0), Array(100,100,10) )
+  val s1 = new ma2.Section( Array(50,50,5), Array(10,10,1) )
+  val s2 = s1.shiftOrigin( s0 )
+  println( s2 )
 }

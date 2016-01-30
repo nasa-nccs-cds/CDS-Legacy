@@ -4,7 +4,7 @@ object Collection {
   def apply( ctype: String, url: String, vars: List[String] = List() ) = { new Collection(ctype,url,vars) }
 }
 class Collection( val ctype: String, val url: String, val vars: List[String] = List() ) {
-  def getUrl( varName: String = "" ) = {
+  def getUri( varName: String = "" ) = {
     ctype match {
       case "dods" => s"$url/$varName.ncml"
       case _ => throw new Exception( s"Unrecognized collection type: $ctype")
