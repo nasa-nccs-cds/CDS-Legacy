@@ -189,6 +189,8 @@ class SubsetData( val roiSection: ma2.Section, val ndArray: INDArray ) {
       new SubsetData( newSection, if(copy) newDataArray.dup() else newDataArray )
     }
   }
+
+  def shape = ndArray.shape.toList
 }
 
 object sectionTest extends App {

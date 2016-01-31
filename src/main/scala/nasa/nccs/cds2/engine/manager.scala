@@ -30,6 +30,7 @@ class CDS2ExecutionManager {
 }
 
 class DataManager( val domainMap: Map[String,DomainContainer] ) {
+  val logger = org.slf4j.LoggerFactory.getLogger("nasa.nccs.cds2.engine.DataManager")
   var datasets = mutable.Map[String,cdm.CDSDataset]()
   var subsets = mutable.Map[String,cdm.SubsetData]()
 
@@ -59,6 +60,7 @@ class DataManager( val domainMap: Map[String,DomainContainer] ) {
             val variable = dataset.loadVariable(data_source.name)
             val subsetData: cdm.SubsetData = variable.loadRoi(domain_container.axes)
             subsets += uid -> subsetData
+            logger.info("Loaded variable %s (%s:%s) subset data, shape = %s ".format(uid, data_source.collection, data_source.name, subsetData.shape.toString) )
             subsetData
           case None =>
             throw new Exception("Undefined domain for dataset " + data_source.name + ", domain = " + data_source.domain)
