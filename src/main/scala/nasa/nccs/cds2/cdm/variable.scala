@@ -15,6 +15,7 @@ import ucar.nc2.dataset.{CoordinateAxis, CoordinateAxis1D, CoordinateSystem, Coo
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import scala.collection.mutable
+import ucar.nc2.constants.AxisType
 
 object BoundsRole extends Enumeration { val Start, End = Value }
 
@@ -95,7 +96,7 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
   }
 
   def getIndexBounds(coordAxis: CoordinateAxis, startval: GenericNumber, endval: GenericNumber, strict: Boolean = true): ma2.Range = {
-    val indexRange = if (coordAxis.getAxisType == nc2.constants.AxisType.Time) getTimeIndexBounds(coordAxis, startval, endval) else getGridIndexBounds(coordAxis, startval, endval)
+    val indexRange = if (coordAxis.getAxisType == nc2.constants.AxisType.Time) getTimeIndexBounds(coordAxis, startval.toString, endval.toString ) else getGridIndexBounds(coordAxis, startval, endval)
     assert(indexRange.last > indexRange.first, "Coordinate bounds appear to be inverted: start = %s, end = %s".format(startval.toString, endval.toString))
     indexRange
   }
@@ -103,7 +104,7 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
   def getSubSection( roi: List[DomainAxis] ): ma2.Section = {
     val shape = ncVariable.getRanges.to[mutable.ArrayBuffer]
     for (axis <- roi) {
-      dataset.getCoordinateAxis(axis.dimension) match {
+      dataset.getCoordinateAxis(axis.axistype) match {
         case Some(coordAxis) =>
           ncVariable.findDimensionIndex(coordAxis.getShortName) match {
             case -1 => throw new IllegalStateException("Can't find axis %s in variable %s".format(coordAxis.getShortName, ncVariable.getNameAndDimensions))
@@ -117,7 +118,7 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
                 case _ => throw new IllegalStateException("Illegal system value in axis bounds: " + axis.system)
               }
           }
-        case None => logger.warn("Ignoring bounds on %c axis in variable %s".format(axis.dimension, ncVariable.getNameAndDimensions))
+        case None => logger.warn("Ignoring bounds on %s axis in variable %s".format(axis.name, ncVariable.getNameAndDimensions))
       }
     }
     new ma2.Section( shape )

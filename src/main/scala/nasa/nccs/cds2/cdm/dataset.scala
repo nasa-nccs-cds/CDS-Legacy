@@ -2,6 +2,7 @@ package nasa.nccs.cds2.cdm
 
 import nasa.nccs.cds2.cdm
 import nasa.nccs.cds2.utilities.cdsutils
+import nasa.nccs.esgf.process.DomainAxis
 import org.nd4j.linalg.api.ndarray.INDArray
 import ucar.{ma2, nc2}
 import ucar.nc2.Variable
@@ -64,12 +65,15 @@ class CDSDataset( val uri: String, val ncDataset: NetcdfDataset, val coordSystem
       case Some(cdsVariable) => cdsVariable
     }
   }
-  def getCoordinateAxis( dimension: Char ): Option[CoordinateAxis] = {
-    dimension match {
-      case 'x' => cdsutils.findNonNull( coordSystem.getLonAxis, coordSystem.getXaxis )
-      case 'y' => cdsutils.findNonNull( coordSystem.getLatAxis, coordSystem.getYaxis )
-      case 'z' => cdsutils.findNonNull( coordSystem.getPressureAxis, coordSystem.getHeightAxis )
-      case 't' => cdsutils.findNonNull( coordSystem.getTaxis )
+  def getCoordinateAxis( axisType: DomainAxis.Type.Value ): Option[CoordinateAxis] = {
+    axisType match {
+      case DomainAxis.Type.X => cdsutils.toOption( coordSystem.getXaxis )
+      case DomainAxis.Type.Y => cdsutils.toOption( coordSystem.getYaxis )
+      case DomainAxis.Type.Z => cdsutils.toOption( coordSystem.getHeightAxis )
+      case DomainAxis.Type.Lon => cdsutils.toOption( coordSystem.getLonAxis )
+      case DomainAxis.Type.Lat => cdsutils.toOption( coordSystem.getLatAxis )
+      case DomainAxis.Type.Lev => cdsutils.toOption( coordSystem.getPressureAxis )
+      case DomainAxis.Type.T => cdsutils.toOption( coordSystem.getTaxis )
     }
   }
 }

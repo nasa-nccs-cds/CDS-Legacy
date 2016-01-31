@@ -72,17 +72,17 @@ class DataManager( val domainMap: Map[String,DomainContainer] ) {
 object SampleTaskRequests {
 
   def getAnomalyTimeseries: TaskRequest = {
-    import nccs.esgf.process._
+    import nasa.nccs.esgf.process.DomainAxis.Type._
     val workflows = List[WorkflowContainer]( new WorkflowContainer( operations = List( new OperationContainer( identifier = "CWT.average~ivar#1",  name ="CWT.average", result = "ivar#1", inputs = List("v0"), optargs = Map("axis" -> "xy") )  ) ) )
     val variableMap = Map[String,DataContainer]( "v0" -> new DataContainer( uid="v0", source = Some(new DataSource( name = "hur", collection = "merra/mon/atmos", domain = "d0" ) ) ) )
-    val domainMap = Map[String,DomainContainer]( "d0" -> new DomainContainer( name = "d0", axes = cdsutils.flatlist( DomainAxis("lev",1,1), DomainAxis("lat",100,100), DomainAxis("lon",100,100) ) ) )
+    val domainMap = Map[String,DomainContainer]( "d0" -> new DomainContainer( name = "d0", axes = cdsutils.flatlist( DomainAxis(Lev,1,1), DomainAxis(Lat,100,100), DomainAxis(Lon,100,100) ) ) )
     new TaskRequest( "CWT.anomaly", variableMap, domainMap, workflows )
   }
 
   def getCacheChunk: TaskRequest = {
-    import nccs.esgf.process._
+    import nasa.nccs.esgf.process.DomainAxis.Type._
     val variableMap = Map[String,DataContainer]( "v0" -> new DataContainer( uid="v0", source = Some(new DataSource( name = "hur", collection = "merra/mon/atmos", domain = "d0" ) ) ) )
-    val domainMap = Map[String,DomainContainer]( "d0" -> new DomainContainer( name = "d0", axes = cdsutils.flatlist( DomainAxis("lev",1,1) ) ) )
+    val domainMap = Map[String,DomainContainer]( "d0" -> new DomainContainer( name = "d0", axes = cdsutils.flatlist( DomainAxis(Lev,1,1) ) ) )
     new TaskRequest( "CWT.cache",  variableMap, domainMap )
   }
 
