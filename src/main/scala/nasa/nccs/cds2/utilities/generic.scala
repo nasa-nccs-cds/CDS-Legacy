@@ -10,8 +10,6 @@ object cdsutils {
 
   def findNonNull[T]( values: T* ): Option[T] = values.toList.find( _ != null )
 
-  def toOption[T]( value: T ): Option[T] = if( value == null ) None else Some(value)
-
   object dateTimeParser {
     import com.joestelmach.natty
     private val parser = new natty.Parser()

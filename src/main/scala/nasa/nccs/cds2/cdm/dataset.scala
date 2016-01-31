@@ -67,13 +67,13 @@ class CDSDataset( val uri: String, val ncDataset: NetcdfDataset, val coordSystem
   }
   def getCoordinateAxis( axisType: DomainAxis.Type.Value ): Option[CoordinateAxis] = {
     axisType match {
-      case DomainAxis.Type.X => cdsutils.toOption( coordSystem.getXaxis )
-      case DomainAxis.Type.Y => cdsutils.toOption( coordSystem.getYaxis )
-      case DomainAxis.Type.Z => cdsutils.toOption( coordSystem.getHeightAxis )
-      case DomainAxis.Type.Lon => cdsutils.toOption( coordSystem.getLonAxis )
-      case DomainAxis.Type.Lat => cdsutils.toOption( coordSystem.getLatAxis )
-      case DomainAxis.Type.Lev => cdsutils.toOption( coordSystem.getPressureAxis )
-      case DomainAxis.Type.T => cdsutils.toOption( coordSystem.getTaxis )
+      case DomainAxis.Type.X => Option( coordSystem.getXaxis )
+      case DomainAxis.Type.Y => Option( coordSystem.getYaxis )
+      case DomainAxis.Type.Z => Option( coordSystem.getHeightAxis )
+      case DomainAxis.Type.Lon => Option( coordSystem.getLonAxis )
+      case DomainAxis.Type.Lat => Option( coordSystem.getLatAxis )
+      case DomainAxis.Type.Lev => Option( coordSystem.getPressureAxis )
+      case DomainAxis.Type.T => Option( coordSystem.getTaxis )
     }
   }
 }
