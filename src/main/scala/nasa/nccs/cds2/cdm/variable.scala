@@ -142,7 +142,7 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
     logger.info( "Converted java array to INDArray, shape = %s, time = %.2f ms".format( array.getShape.toList.toString, (t1-t0)/1e6 ) )
     result
   }
-  
+
   def loadRoi(roi: List[DomainAxis]): SubsetData = {
     val roiSection: ma2.Section = getSubSection(roi)
     findSubset(roiSection) match {
@@ -156,7 +156,7 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
   }
 
   def addSubset( roiSection: ma2.Section, ndArray: INDArray ): SubsetData = {
-    val subset = new SubsetData(roiSection, ndArray)
+    val subset = new SubsetData(this, roiSection, ndArray )
     subsets += subset
     subset
   }
@@ -171,14 +171,10 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
 }
 
 object SubsetData {
-  def sectionToIndices( section: ma2.Section ): List[INDArrayIndex] = {
-    val arrayIndices = mutable.ListBuffer[INDArrayIndex]()
-    for( range <- section.getRanges ) arrayIndices += NDArrayIndex.interval( range.first, range.last )
-    arrayIndices.toList
-  }
+  def sectionToIndices( section: ma2.Section ): List[INDArrayIndex] = section.getRanges.map( range => NDArrayIndex.interval( range.first, range.last ) ).toList
 }
 
-class SubsetData( val roiSection: ma2.Section, val ndArray: INDArray ) {
+class SubsetData( val variable: CDSVariable, val roiSection: ma2.Section, val ndArray: INDArray ) {
 
   override def toString = { "SubsetData: shape = %s, section = %s".format( ndArray.shape.toString, roiSection.toString ) }
 
@@ -187,7 +183,7 @@ class SubsetData( val roiSection: ma2.Section, val ndArray: INDArray ) {
     else {
       val relativeSection = newSection.shiftOrigin( roiSection )
       val newDataArray = ndArray.get( SubsetData.sectionToIndices(relativeSection):_* )
-      new SubsetData( newSection, if(copy) newDataArray.dup() else newDataArray )
+      new SubsetData( this.variable, newSection, if(copy) newDataArray.dup() else newDataArray )
     }
   }
 

@@ -1,10 +1,12 @@
 package nasa.nccs.cds2.engine
 
-import nasa.nccs.cds2.cdm
+import nasa.nccs.cds2.cdm.CDSVariable
+import nasa.nccs.cds2.{kernels, cdm}
 import nasa.nccs.cds2.loaders.Collections
 import nasa.nccs.esgf.process._
 import nasa.nccs.esgf.engine.PluginExecutionManager
 import org.nd4j.linalg.api.ndarray.INDArray
+import org.nd4j.linalg.factory.Nd4j
 import org.slf4j.LoggerFactory
 import scala.collection.mutable
 import nasa.nccs.cds2.utilities.cdsutils
@@ -18,14 +20,41 @@ object cds2PluginExecutionManager extends PluginExecutionManager {
   }
 }
 
+class ExecutionResult( val result_data: INDArray ) { }
+
+class SingleInputExecutionResult( val input: CDSVariable, result_data: INDArray ) extends ExecutionResult(result_data) {
+
+}
+
 class CDS2ExecutionManager {
   val logger = LoggerFactory.getLogger(classOf[CDS2ExecutionManager])
 
   def execute( request: TaskRequest, run_args: Map[String,Any] ): xml.Elem = {
     logger.info("Execute { request: " + request.toString + ", runargs: " + run_args.toString + "}"  )
     val data_manager = new DataManager( request.domainMap )
-    for( data_container <- request.variableMap.values; if data_container.isSource )  data_manager.getVariableData( data_container.uid, data_container.getSource )
+    for( data_container <- request.variableMap.values; if data_container.isSource )  data_manager.loadVariableData( data_container.uid, data_container.getSource )
+    val result = executeWorkflows( request.workflows, data_manager, run_args )
     request.toXml
+  }
+
+  def executeWorkflows( workflows: List[WorkflowContainer], data_manager: DataManager, run_args: Map[String,Any] ) {
+    val kernelManager = new kernels.KernelManager()
+    for( workflow <- workflows; operation <- workflow.operations ) {
+//      val kernel = kernelManager.get( operation.name )
+      val results: List[ExecutionResult] = demoOperationExecution( operation, data_manager,  run_args )
+      println(".")
+    }
+  }
+
+  def demoOperationExecution(operation: OperationContainer, data_manager: DataManager, run_args: Map[String, Any]): List[ExecutionResult] = {
+    val inputSubsets: List[cdm.SubsetData] = operation.inputs.map(data_manager.getVariableData(_))
+    inputSubsets.map(inputSubset => {
+      new SingleInputExecutionResult( inputSubset.variable,
+        operation.name match {
+          case "CWT.average" => Nd4j.mean(inputSubset.ndArray)
+          case _ => Nd4j.emptyLike(inputSubset.ndArray)
+        })
+    })
   }
 }
 
@@ -50,7 +79,14 @@ class DataManager( val domainMap: Map[String,DomainContainer] ) {
     }
   }
 
-  def getVariableData(uid: String, data_source: DataSource): cdm.SubsetData = {
+  def getVariableData(uid: String): cdm.SubsetData = {
+    subsets.get(uid) match {
+      case Some(subset) => subset
+      case None => throw new Exception("Can't find subset Data for Variable $uid")
+    }
+  }
+
+  def loadVariableData(uid: String, data_source: DataSource): cdm.SubsetData = {
     subsets.get(uid) match {
       case Some(subset) => subset
       case None =>
