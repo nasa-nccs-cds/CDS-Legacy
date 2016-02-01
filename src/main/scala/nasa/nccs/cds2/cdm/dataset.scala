@@ -19,13 +19,13 @@ import scala.collection.JavaConverters._
 object CDSDataset {
   val logger = org.slf4j.LoggerFactory.getLogger("nasa.nccs.cds2.cdm.dataset")
 
-  def load( collection: Collection, varName: String = "" ) = {
+  def load( dsetName: String, collection: Collection, varName: String = "" ) = {
     val uri = collection.getUri( varName )
     val ncDataset: NetcdfDataset = loadNetCDFDataSet( uri )
     val coordSystems: List[CoordinateSystem] = ncDataset.getCoordinateSystems.toList
     assert( coordSystems.size <= 1, "Multiple coordinate systems for one dataset is not supported" )
     if(coordSystems.isEmpty) throw new IllegalStateException("Error creating coordinate system for variable " + varName )
-    new CDSDataset( uri, ncDataset, coordSystems.head )
+    new CDSDataset( dsetName, uri, ncDataset, coordSystems.head )
   }
 
   private def loadNetCDFDataSet(url: String): NetcdfDataset = {
@@ -43,7 +43,7 @@ object CDSDataset {
   }
 }
 
-class CDSDataset( val uri: String, val ncDataset: NetcdfDataset, val coordSystem: CoordinateSystem ) {
+class CDSDataset( val name: String, val uri: String, val ncDataset: NetcdfDataset, val coordSystem: CoordinateSystem ) {
   val attributes = ncDataset.getGlobalAttributes
   val coordAxes: List[CoordinateAxis] = ncDataset.getCoordinateAxes.toList
   val variables = mutable.HashMap.empty[String,cdm.CDSVariable]

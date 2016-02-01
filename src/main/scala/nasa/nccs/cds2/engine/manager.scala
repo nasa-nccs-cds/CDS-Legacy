@@ -22,8 +22,11 @@ object cds2PluginExecutionManager extends PluginExecutionManager {
 
 class ExecutionResult( val result_data: INDArray ) { }
 
-class SingleInputExecutionResult( val input: CDSVariable, result_data: INDArray ) extends ExecutionResult(result_data) {
-
+class SingleInputExecutionResult( val operation: String, input: CDSVariable, result_data: INDArray ) extends ExecutionResult(result_data) {
+  val name = input.name
+  val description = input.description
+  val units = input.units
+  val dataset =  input.dataset.name
 }
 
 class CDS2ExecutionManager {
@@ -49,7 +52,7 @@ class CDS2ExecutionManager {
   def demoOperationExecution(operation: OperationContainer, data_manager: DataManager, run_args: Map[String, Any]): List[ExecutionResult] = {
     val inputSubsets: List[cdm.SubsetData] = operation.inputs.map(data_manager.getVariableData(_))
     inputSubsets.map(inputSubset => {
-      new SingleInputExecutionResult( inputSubset.variable,
+      new SingleInputExecutionResult( operation.name, inputSubset.variable,
         operation.name match {
           case "CWT.average" => Nd4j.mean(inputSubset.ndArray)
           case _ => Nd4j.emptyLike(inputSubset.ndArray)
@@ -64,13 +67,14 @@ class DataManager( val domainMap: Map[String,DomainContainer] ) {
   var subsets = mutable.Map[String,cdm.SubsetData]()
 
   def getDataset( data_source: DataSource ): cdm.CDSDataset = {
-    Collections.CreateIP.get(data_source.collection.toLowerCase) match {
+    val datasetName = data_source.collection.toLowerCase
+    Collections.CreateIP.get(datasetName) match {
       case Some(collection) =>
         val dataset_uid = collection.getUri(data_source.name)
         datasets.get(dataset_uid) match {
           case Some(dataset) => dataset
           case None =>
-            val dataset: cdm.CDSDataset = cdm.CDSDataset.load(collection, data_source.name)
+            val dataset: cdm.CDSDataset = cdm.CDSDataset.load(datasetName, collection, data_source.name)
             datasets += dataset_uid -> dataset
             dataset
         }
