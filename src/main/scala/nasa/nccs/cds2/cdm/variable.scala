@@ -33,10 +33,12 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
 
   override def toString = "\nCDSVariable(%s) { description: '%s', shape: %s, dims: %s, }\n  --> Variable Attributes: %s".format(name, description, shape.mkString("[", " ", "]"), dims.mkString("[", ",", "]"), attributes.mkString("\n\t\t", "\n\t\t", "\n"))
 
+  def normalize(sval: String): String = sval.stripPrefix("\"").stripSuffix("\"").toLowerCase
+
   def getBoundedCalDate(coordAxis1DTime: CoordinateAxis1DTime, caldate: CalendarDate, role: BoundsRole.Value, strict: Boolean = true): CalendarDate = {
     val date_range: CalendarDateRange = coordAxis1DTime.getCalendarDateRange
     if (!date_range.includes(caldate)) {
-      if (strict) throw new IllegalStateException("Time value %s outside of time bounds %s".format(caldate.toString, date_range.toString))
+      if (strict) throw new IllegalStateException("CDS2-CDSVariable: Time value %s outside of time bounds %s".format(caldate.toString, date_range.toString))
       else {
         if (role == BoundsRole.Start) {
           val startDate: CalendarDate = date_range.getStart
@@ -57,7 +59,7 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
         val caldate: CalendarDate = cdsutils.dateTimeParser.parse(tval)
         val caldate_bounded: CalendarDate = getBoundedCalDate(coordAxis1DTime, caldate, role, strict)
         coordAxis1DTime.findTimeIndexFromCalendarDate(caldate_bounded)
-      case _ => throw new IllegalStateException("Can't process time axis type: " + coordAxis.getClass.getName)
+      case _ => throw new IllegalStateException("CDS2-CDSVariable: Can't process time axis type: " + coordAxis.getClass.getName)
     }
     indexVal
   }
@@ -85,7 +87,7 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
             }
           case ival => ival
         }
-      case _ => throw new IllegalStateException("Can't process xyz coord axis type: " + coordAxis.getClass.getName)
+      case _ => throw new IllegalStateException("CDS2-CDSVariable: Can't process xyz coord axis type: " + coordAxis.getClass.getName)
     }
   }
 
@@ -97,7 +99,7 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
 
   def getIndexBounds(coordAxis: CoordinateAxis, startval: GenericNumber, endval: GenericNumber, strict: Boolean = true): ma2.Range = {
     val indexRange = if (coordAxis.getAxisType == nc2.constants.AxisType.Time) getTimeIndexBounds(coordAxis, startval.toString, endval.toString ) else getGridIndexBounds(coordAxis, startval, endval)
-    assert(indexRange.last > indexRange.first, "Coordinate bounds appear to be inverted: start = %s, end = %s".format(startval.toString, endval.toString))
+    assert(indexRange.last >= indexRange.first, "CDS2-CDSVariable: Coordinate bounds appear to be inverted: start = %s, end = %s".format(startval.toString, endval.toString))
     indexRange
   }
 
@@ -107,7 +109,7 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
       dataset.getCoordinateAxis(axis.axistype) match {
         case Some(coordAxis) =>
           ncVariable.findDimensionIndex(coordAxis.getShortName) match {
-            case -1 => throw new IllegalStateException("Can't find axis %s in variable %s".format(coordAxis.getShortName, ncVariable.getNameAndDimensions))
+            case -1 => throw new IllegalStateException("CDS2-CDSVariable: Can't find axis %s in variable %s".format(coordAxis.getShortName, ncVariable.getNameAndDimensions))
             case dimension_index =>
               axis.system match {
                 case "indices" =>
@@ -115,7 +117,7 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
                 case "values" =>
                   val boundedRange = getIndexBounds(coordAxis, axis.start, axis.end)
                   shape.update(dimension_index, boundedRange)
-                case _ => throw new IllegalStateException("Illegal system value in axis bounds: " + axis.system)
+                case _ => throw new IllegalStateException("CDS2-CDSVariable: Illegal system value in axis bounds: " + axis.system)
               }
           }
         case None => logger.warn("Ignoring bounds on %s axis in variable %s".format(axis.name, ncVariable.getNameAndDimensions))

@@ -20,13 +20,25 @@ object cds2PluginExecutionManager extends PluginExecutionManager {
   }
 }
 
-class ExecutionResult( val result_data: INDArray ) { }
+class ExecutionResult( val result_data: Array[Float] ) {
+  def toXml = <result> { result_data.mkString( " ", ",", " " ) } </result>  // cdsutils.cdata(
+}
 
-class SingleInputExecutionResult( val operation: String, input: CDSVariable, result_data: INDArray ) extends ExecutionResult(result_data) {
+class ExecutionResults( val results: List[ExecutionResult] ) {
+    def toXml = <execution> {  results.map(_.toXml )  } </execution>
+}
+
+class SingleInputExecutionResult( val operation: String, input: CDSVariable, result_data: Array[Float] ) extends ExecutionResult(result_data) {
   val name = input.name
   val description = input.description
   val units = input.units
   val dataset =  input.dataset.name
+
+  override def toXml =
+    <operation id={ operation }>
+      <input name={ name } dataset={ dataset } units={ units } description={ description }  />
+      { super.toXml }
+    </operation>
 }
 
 class CDS2ExecutionManager {
@@ -36,17 +48,12 @@ class CDS2ExecutionManager {
     logger.info("Execute { request: " + request.toString + ", runargs: " + run_args.toString + "}"  )
     val data_manager = new DataManager( request.domainMap )
     for( data_container <- request.variableMap.values; if data_container.isSource )  data_manager.loadVariableData( data_container.uid, data_container.getSource )
-    val result = executeWorkflows( request.workflows, data_manager, run_args )
-    request.toXml
+    executeWorkflows( request.workflows, data_manager, run_args ).toXml
   }
 
-  def executeWorkflows( workflows: List[WorkflowContainer], data_manager: DataManager, run_args: Map[String,Any] ) {
-    val kernelManager = new kernels.KernelManager()
-    for( workflow <- workflows; operation <- workflow.operations ) {
-//      val kernel = kernelManager.get( operation.name )
-      val results: List[ExecutionResult] = demoOperationExecution( operation, data_manager,  run_args )
-      println(".")
-    }
+  def executeWorkflows( workflows: List[WorkflowContainer], data_manager: DataManager, run_args: Map[String,Any] ): ExecutionResults = {
+//    val kernelManager = new kernels.KernelManager()
+    new ExecutionResults( workflows.map( workflow => workflow.operations.map( operation => demoOperationExecution( operation, data_manager,  run_args ) ).flatten ).flatten )
   }
 
   def demoOperationExecution(operation: OperationContainer, data_manager: DataManager, run_args: Map[String, Any]): List[ExecutionResult] = {
@@ -54,8 +61,12 @@ class CDS2ExecutionManager {
     inputSubsets.map(inputSubset => {
       new SingleInputExecutionResult( operation.name, inputSubset.variable,
         operation.name match {
-          case "CWT.average" => Nd4j.mean(inputSubset.ndArray)
-          case _ => Nd4j.emptyLike(inputSubset.ndArray)
+          case "CWT.average" =>
+
+            val result = Array[Float](Nd4j.mean(inputSubset.ndArray).getFloat(0))
+            logger.info( "Executed operation %s, result = %s ".format( operation.name, result.mkString( "[", ",", "]" ) ) )
+            result
+          case _ => Array[Float]()
         })
     })
   }

@@ -10,6 +10,8 @@ object cdsutils {
 
   def findNonNull[T]( values: T* ): Option[T] = values.toList.find( _ != null )
 
+  def cdata(obj: Any): String = "<![CDATA[\n " + obj.toString + "\n]]>"
+
   object dateTimeParser {
     import com.joestelmach.natty
     private val parser = new natty.Parser()
