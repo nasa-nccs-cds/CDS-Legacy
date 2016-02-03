@@ -24,6 +24,19 @@ object cdsutils {
       caldates.head
     }
   }
+
+//  def loadExtensionModule( jar_file: String, module: Class ): Unit = {
+//    var classLoader = new java.net.URLClassLoader( Array(new java.io.File( jar_file ).toURI.toURL ), this.getClass.getClassLoader)
+//    var clazzExModule = classLoader.loadClass(module.GetClass.GetName + "$") // the suffix "$" is for Scala "object",
+//    try {
+//      //"MODULE$" is a trick, and I'm not sure about "get(null)"
+//      var module = clazzExModule.getField("MODULE$").get(null).asInstanceOf[module]
+//    } catch {
+//      case e: java.lang.ClassCastException =>
+//        printf(" - %s is not Module\n", clazzExModule)
+//    }
+//
+//  }
 }
 
 object dateParseTest extends App {
