@@ -1,15 +1,21 @@
 package nasa.nccs.cds2.kernels
-
+import collection.mutable
 
 class KernelManager(  ) {
 
-  val kernel_map: Map[String,Kernel] = collectDefinedKernels()
+  val kernel_map = collectDefinedKernels()
 
-  def get( kernelName: String ): Option[Kernel] = kernel_map.get(kernelName)
+  def getKernel( kernelName: String ): Option[Kernel] = kernel_map.get(kernelName)
 
-  def collectDefinedKernels(): Map[String,Kernel] = {  Map[String,Kernel]() }
+  def collectDefinedKernels(): mutable.HashMap[String,Kernel] = {  mutable.HashMap[String,Kernel]() }
+
+  def addKernel( kernel: Kernel ) = {
+    kernel_map += ( kernel.name.toLowerCase -> kernel )
+  }
 
 }
+
+object kernelManager extends KernelManager() { }
 
 
 

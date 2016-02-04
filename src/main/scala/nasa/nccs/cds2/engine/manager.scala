@@ -1,15 +1,14 @@
 package nasa.nccs.cds2.engine
 
-import nasa.nccs.cds2.cdm.CDSVariable
-import nasa.nccs.cds2.{kernels, cdm}
+import nasa.nccs.cds2.cdm
 import nasa.nccs.cds2.loaders.Collections
 import nasa.nccs.esgf.process._
 import nasa.nccs.esgf.engine.PluginExecutionManager
-import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4j.linalg.factory.Nd4j
 import org.slf4j.LoggerFactory
 import scala.collection.mutable
 import nasa.nccs.cds2.utilities.cdsutils
+
 
 object cds2PluginExecutionManager extends PluginExecutionManager {
   val cds2ExecutionManager = new CDS2ExecutionManager()
@@ -28,7 +27,7 @@ class ExecutionResults( val results: List[ExecutionResult] ) {
     def toXml = <execution> {  results.map(_.toXml )  } </execution>
 }
 
-class SingleInputExecutionResult( val operation: String, input: CDSVariable, result_data: Array[Float] ) extends ExecutionResult(result_data) {
+class SingleInputExecutionResult( val operation: String, input: cdm.CDSVariable, result_data: Array[Float] ) extends ExecutionResult(result_data) {
   val name = input.name
   val description = input.description
   val units = input.units
@@ -57,17 +56,15 @@ class CDS2ExecutionManager {
   }
 
   def demoOperationExecution(operation: OperationContainer, data_manager: DataManager, run_args: Map[String, Any]): List[ExecutionResult] = {
+    import nasa.nccs.cds2.modules._
+    import nasa.nccs.cds2.kernels.{ kernelManager, KernelManager }
     val inputSubsets: List[cdm.Fragment] = operation.inputs.map(data_manager.getVariableData(_))
     inputSubsets.map(inputSubset => {
-      new SingleInputExecutionResult( operation.name, inputSubset.variable,
-        operation.name match {
-          case "CWT.average" =>
-
-            val result = Array[Float](Nd4j.mean(inputSubset.ndArray).getFloat(0))
-            logger.info( "Executed operation %s, result = %s ".format( operation.name, result.mkString( "[", ",", "]" ) ) )
-            result
-          case _ => Array[Float]()
-        })
+      kernelManager.getKernel(operation.name.toLowerCase) match {
+        case None => throw new Exception("Unrecognized Kernel: " + operation.name)
+        case Some(kernel) =>
+          kernel.execute( inputSubsets, run_args)
+      }
     })
   }
 }
