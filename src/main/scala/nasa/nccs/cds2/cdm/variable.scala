@@ -29,7 +29,7 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
   val shape = ncVariable.getShape.toList
   val fullname = ncVariable.getFullName
   val attributes = nc2.Attribute.makeMap(ncVariable.getAttributes).toMap
-  val subsets = mutable.ListBuffer[SubsetData]()
+  val subsets = mutable.ListBuffer[Fragment]()
 
   override def toString = "\nCDSVariable(%s) { description: '%s', shape: %s, dims: %s, }\n  --> Variable Attributes: %s".format(name, description, shape.mkString("[", " ", "]"), dims.mkString("[", ",", "]"), attributes.mkString("\n\t\t", "\n\t\t", "\n"))
 
@@ -145,7 +145,7 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
     result
   }
 
-  def loadRoi(roi: List[DomainAxis]): SubsetData = {
+  def loadRoi(roi: List[DomainAxis]): Fragment = {
     val roiSection: ma2.Section = getSubSection(roi)
     findSubset(roiSection) match {
       case None =>
@@ -157,13 +157,13 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
     }
   }
 
-  def addSubset( roiSection: ma2.Section, ndArray: INDArray ): SubsetData = {
-    val subset = new SubsetData(this, roiSection, ndArray )
+  def addSubset( roiSection: ma2.Section, ndArray: INDArray ): Fragment = {
+    val subset = new Fragment(this, roiSection, ndArray )
     subsets += subset
     subset
   }
 
-  def findSubset( requestedSection: ma2.Section, copy: Boolean=false ): Option[SubsetData] = {
+  def findSubset( requestedSection: ma2.Section, copy: Boolean=false ): Option[Fragment] = {
     val validSubsets = subsets.filter( _.roiSection.contains(requestedSection) )
     validSubsets.size match {
       case 0 => None;
@@ -172,20 +172,20 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
   }
 }
 
-object SubsetData {
+object Fragment {
   def sectionToIndices( section: ma2.Section ): List[INDArrayIndex] = section.getRanges.map( range => NDArrayIndex.interval( range.first, range.last ) ).toList
 }
 
-class SubsetData( val variable: CDSVariable, val roiSection: ma2.Section, val ndArray: INDArray ) {
+class Fragment( val variable: CDSVariable, val roiSection: ma2.Section, val ndArray: INDArray ) {
 
-  override def toString = { "SubsetData: shape = %s, section = %s".format( ndArray.shape.toString, roiSection.toString ) }
+  override def toString = { "Fragment: shape = %s, section = %s".format( ndArray.shape.toString, roiSection.toString ) }
 
-  def cutNewSubset( newSection: ma2.Section, copy: Boolean ): SubsetData = {
+  def cutNewSubset( newSection: ma2.Section, copy: Boolean ): Fragment = {
     if (roiSection.equals( newSection )) this
     else {
       val relativeSection = newSection.shiftOrigin( roiSection )
-      val newDataArray = ndArray.get( SubsetData.sectionToIndices(relativeSection):_* )
-      new SubsetData( this.variable, newSection, if(copy) newDataArray.dup() else newDataArray )
+      val newDataArray = ndArray.get( Fragment.sectionToIndices(relativeSection):_* )
+      new Fragment( this.variable, newSection, if(copy) newDataArray.dup() else newDataArray )
     }
   }
 

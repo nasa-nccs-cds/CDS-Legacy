@@ -57,7 +57,7 @@ class CDS2ExecutionManager {
   }
 
   def demoOperationExecution(operation: OperationContainer, data_manager: DataManager, run_args: Map[String, Any]): List[ExecutionResult] = {
-    val inputSubsets: List[cdm.SubsetData] = operation.inputs.map(data_manager.getVariableData(_))
+    val inputSubsets: List[cdm.Fragment] = operation.inputs.map(data_manager.getVariableData(_))
     inputSubsets.map(inputSubset => {
       new SingleInputExecutionResult( operation.name, inputSubset.variable,
         operation.name match {
@@ -75,7 +75,7 @@ class CDS2ExecutionManager {
 class DataManager( val domainMap: Map[String,DomainContainer] ) {
   val logger = org.slf4j.LoggerFactory.getLogger("nasa.nccs.cds2.engine.DataManager")
   var datasets = mutable.Map[String,cdm.CDSDataset]()
-  var subsets = mutable.Map[String,cdm.SubsetData]()
+  var subsets = mutable.Map[String,cdm.Fragment]()
 
   def getDataset( data_source: DataSource ): cdm.CDSDataset = {
     val datasetName = data_source.collection.toLowerCase
@@ -94,14 +94,14 @@ class DataManager( val domainMap: Map[String,DomainContainer] ) {
     }
   }
 
-  def getVariableData(uid: String): cdm.SubsetData = {
+  def getVariableData(uid: String): cdm.Fragment = {
     subsets.get(uid) match {
       case Some(subset) => subset
       case None => throw new Exception("Can't find subset Data for Variable $uid")
     }
   }
 
-  def loadVariableData(uid: String, data_source: DataSource): cdm.SubsetData = {
+  def loadVariableData(uid: String, data_source: DataSource): cdm.Fragment = {
     subsets.get(uid) match {
       case Some(subset) => subset
       case None =>
@@ -109,10 +109,10 @@ class DataManager( val domainMap: Map[String,DomainContainer] ) {
         domainMap.get(data_source.domain) match {
           case Some(domain_container) =>
             val variable = dataset.loadVariable(data_source.name)
-            val subsetData: cdm.SubsetData = variable.loadRoi(domain_container.axes)
-            subsets += uid -> subsetData
-            logger.info("Loaded variable %s (%s:%s) subset data, shape = %s ".format(uid, data_source.collection, data_source.name, subsetData.shape.toString) )
-            subsetData
+            val Fragment: cdm.Fragment = variable.loadRoi(domain_container.axes)
+            subsets += uid -> Fragment
+            logger.info("Loaded variable %s (%s:%s) subset data, shape = %s ".format(uid, data_source.collection, data_source.name, Fragment.shape.toString) )
+            Fragment
           case None =>
             throw new Exception("Undefined domain for dataset " + data_source.name + ", domain = " + data_source.domain)
         }

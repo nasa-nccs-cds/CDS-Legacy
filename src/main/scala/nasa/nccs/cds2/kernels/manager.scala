@@ -1,10 +1,6 @@
 package nasa.nccs.cds2.kernels
 
 
-abstract class Kernel( name: String ) {
-
-}
-
 class KernelManager(  ) {
 
   val kernel_map: Map[String,Kernel] = collectDefinedKernels()
@@ -14,3 +10,6 @@ class KernelManager(  ) {
   def collectDefinedKernels(): Map[String,Kernel] = {  Map[String,Kernel]() }
 
 }
+
+
+
