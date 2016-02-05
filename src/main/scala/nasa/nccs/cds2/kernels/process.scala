@@ -11,7 +11,7 @@ object Port {
 
 class Port( val name: String, val cardinality: String, val description: String, val datatype: String, val identifier: String )  {
 
-  def toXml() = {
+  def toXml = {
     <port name={name} cardinality={cardinality}>
       { if ( description.nonEmpty ) <description> {description} </description> }
       { if ( datatype.nonEmpty ) <datatype> {datatype} </datatype> }
@@ -20,9 +20,10 @@ class Port( val name: String, val cardinality: String, val description: String, 
   }
 }
 
+
 abstract class Kernel( val inputs: List[Port], val outputs: List[Port], val description: String="", val keywords: List[String]=List(), val identifier: String="", val metadata:String="" ) {
   val logger = LoggerFactory.getLogger(classOf[Kernel])
-  val identifiers = this.getClass.getName.split('$').map( _.split('.') ).flatten
+  val identifiers = this.getClass.getName.split('$').flatMap( _.split('.') )
   def operation: String = identifiers.last
   def module = identifiers.dropRight(1).mkString(".")
   def id   = identifiers.mkString(".")
@@ -30,7 +31,7 @@ abstract class Kernel( val inputs: List[Port], val outputs: List[Port], val desc
 
   def execute(inputSubsets: List[cdm.Fragment], run_args: Map[String, Any]): ExecutionResult
 
-  def toXml() = {
+  def toXml = {
     <kernel module={module} name={name}>
       {if (description.nonEmpty) <description>
       {description}
@@ -44,3 +45,27 @@ abstract class Kernel( val inputs: List[Port], val outputs: List[Port], val desc
     </kernel>
   }
 }
+
+class KernelModule {
+  val identifiers = this.getClass.getName.split('$').flatMap( _.split('.') )
+  def package_path = identifiers.dropRight(1).mkString(".")
+  def name: String = identifiers.last
+  val version = ""
+  val organization = ""
+  val author = ""
+  val contact = ""
+
+  def getKernelClasses = this.getClass.getClasses.toList.filter( _.getSuperclass.getName.split('.').last == "Kernel"  )
+
+  def toXml = {
+
+    <kernelModule name={name}>
+      { if ( version.nonEmpty ) <description> {version} </description> }
+      { if ( organization.nonEmpty ) <datatype> {organization} </datatype> }
+      { if ( author.nonEmpty ) <identifier> {author} </identifier> }
+      { if ( contact.nonEmpty ) <identifier> {contact} </identifier> }
+
+    </kernelModule>
+  }
+}
+

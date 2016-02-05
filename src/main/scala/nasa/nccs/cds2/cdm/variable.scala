@@ -198,3 +198,8 @@ object sectionTest extends App {
   val s2 = s1.shiftOrigin( s0 )
   println( s2 )
 }
+
+object sbtTest extends App {
+  val s2 = cdsutils.getKernelPackages
+  println( s2 )
+}

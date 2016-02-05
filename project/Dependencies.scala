@@ -1,4 +1,3 @@
-
 import sbt._
 
 object Version {
@@ -17,8 +16,8 @@ object Library {
   val mockitoAll     = "org.mockito"       %  "mockito-all"     % Version.mockito
   val scalaTest      = "org.scalatest"     %% "scalatest"       % Version.scalaTest
   val slf4jApi       = "org.slf4j"         %  "slf4j-api"       % Version.slf4j
-  val sparkSQL       = "org.apache.spark"  %% "spark-sql" % Version.spark
-  val scalaxml       = "org.scala-lang.modules" %% "scala-xml" % "1.0.3"
+  val sparkSQL       = "org.apache.spark"  %% "spark-sql"       % Version.spark
+  val scalaxml       = "org.scala-lang.modules" %% "scala-xml"  % "1.0.3"
   val scalaparser    = "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.3"
 
   val cdm            = "edu.ucar"           % "cdm"             % "4.6.0"
@@ -31,6 +30,7 @@ object Library {
   val udunits        = "edu.ucar"           %  "udunits"        % "4.6.0"
   val joda           = "joda-time"          % "joda-time"       % "2.8.1"
   val natty          = "com.joestelmach"    % "natty"           % "0.11"
+  val guava          = "com.google.guava"   % "guava"           % "18.0"
 }
 
 object Dependencies {
@@ -43,7 +43,7 @@ object Dependencies {
     scalaTest      % "test",
     mockitoAll     % "test"
   )
-  val scala = Seq( logbackClassic, joda, natty )
+  val scala = Seq( logbackClassic, joda, natty, guava )
 
   val spark = Seq( sparkSQL )
 

@@ -1,4 +1,7 @@
 package nasa.nccs.cds2.kernels
+
+import nasa.nccs.cds2.utilities.cdsutils
+
 import collection.mutable
 
 class KernelManager(  ) {
@@ -7,7 +10,14 @@ class KernelManager(  ) {
 
   def getKernel( kernelName: String ): Option[Kernel] = kernel_map.get(kernelName)
 
-  def collectDefinedKernels(): mutable.HashMap[String,Kernel] = {  mutable.HashMap[String,Kernel]() }
+  def collectDefinedKernels(): mutable.HashMap[String,Kernel] = {
+//    import com.google.common.reflect.ClassPath
+//    val classpath: ClassPath = ClassPath.from(classloader)
+//    for( kernelPackageName: String <- cdsutils.getKernelPackages ) {
+//      val classInfo = classpath.getTopLevelClasses(kernelPackageName)
+//    }
+    new mutable.HashMap[String,Kernel]()
+  }
 
   def addKernel( kernel: Kernel ) = {
     kernel_map += ( kernel.name.toLowerCase -> kernel )

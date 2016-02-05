@@ -1,3 +1,4 @@
+val kernelPackages = settingKey[ Seq[String] ]("A list of user-defined Kernel packages")
 
 name := "CDS2"
 
@@ -7,7 +8,14 @@ scalaVersion := "2.11.7"
 
 organization := "nasa.nccs"
 
-lazy val root = project in file(".")
+kernelPackages := Seq[String]( "nasa.nccs.cds2.modules.CDS" )
+
+lazy val root = (project in file(".")).
+  enablePlugins(BuildInfoPlugin).
+  settings(
+    buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion, kernelPackages),
+    buildInfoPackage := "cdsbt"
+  )
 
 ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) }
 
