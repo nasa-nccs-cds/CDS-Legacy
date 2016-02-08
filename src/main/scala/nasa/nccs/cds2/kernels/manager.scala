@@ -1,26 +1,27 @@
 package nasa.nccs.cds2.kernels
 
-import nasa.nccs.cds2.utilities.cdsutils
 
 import collection.mutable
 
 class KernelManager(  ) {
 
-  val kernel_map = collectDefinedKernels()
+  val kernelModules = collectKernelModules()
 
-  def getKernel( kernelName: String ): Option[Kernel] = kernel_map.get(kernelName)
+  def getModule( moduleName: String ): Option[KernelModule] = kernelModules.get(moduleName)
 
-  def collectDefinedKernels(): mutable.HashMap[String,Kernel] = {
+  def toXml = <modules>{ kernelModules.values.map( _.toXml ) } </modules>
+
+  def collectKernelModules(): Map[String,KernelModule] = {
+    import nasa.nccs.cds2.modules.CDS.CDS
+    import nasa.nccs.cds2.utilities.cdsutils
+    val kernelModules = new mutable.ListBuffer[KernelModule]
 //    import com.google.common.reflect.ClassPath
 //    val classpath: ClassPath = ClassPath.from(classloader)
 //    for( kernelPackageName: String <- cdsutils.getKernelPackages ) {
 //      val classInfo = classpath.getTopLevelClasses(kernelPackageName)
 //    }
-    new mutable.HashMap[String,Kernel]()
-  }
-
-  def addKernel( kernel: Kernel ) = {
-    kernel_map += ( kernel.name.toLowerCase -> kernel )
+    kernelModules += new CDS()
+    Map( kernelModules.map( km => km.name -> km ):_* )
   }
 
 }

@@ -8,16 +8,17 @@ import org.nd4j.linalg.factory.Nd4j
 import org.slf4j.LoggerFactory
 import scala.collection.mutable
 import nasa.nccs.cds2.utilities.cdsutils
+import nasa.nccs.cds2.kernels.{ KernelModule, kernelManager, Kernel }
 
 
-object cds2PluginExecutionManager extends PluginExecutionManager {
-  val cds2ExecutionManager = new CDS2ExecutionManager()
-
-  override def execute( process_name: String, datainputs: Map[String, Seq[Map[String, Any]]], run_args: Map[String,Any] ): xml.Elem = {
-    val request = TaskRequest( process_name, datainputs )
-    cds2ExecutionManager.execute( request, run_args )
-  }
-}
+//object cds2PluginExecutionManager extends PluginExecutionManager {
+//  val cds2ExecutionManager = new CDS2ExecutionManager()
+//
+//  override def execute( process_name: String, datainputs: Map[String, Seq[Map[String, Any]]], run_args: Map[String,Any] ): xml.Elem = {
+//    val request = TaskRequest( process_name, datainputs )
+//    cds2ExecutionManager.execute( request, run_args )
+//  }
+//}
 
 class ExecutionResult( val result_data: Array[Float] ) {
   def toXml = <result> { result_data.mkString( " ", ",", " " ) } </result>  // cdsutils.cdata(
@@ -43,6 +44,24 @@ class SingleInputExecutionResult( val operation: String, input: cdm.CDSVariable,
 class CDS2ExecutionManager {
   val logger = LoggerFactory.getLogger(classOf[CDS2ExecutionManager])
 
+  def getKernelModule( moduleName: String  ): KernelModule = {
+    kernelManager.getModule( moduleName  ) match {
+      case Some(kmod) => kmod
+      case None => throw new Exception("Unrecognized Kernel Module: " +  moduleName )
+    }
+  }
+  def getKernel( moduleName: String, operation: String  ): Kernel = {
+    val kmod = getKernelModule( moduleName )
+    kmod.getKernel( operation  ) match {
+      case Some(kernel) => kernel
+      case None => throw new Exception( s"Unrecognized Kernel $operation in Module $moduleName ")
+    }
+  }
+  def getKernel( kernelName: String  ): Kernel = {
+    val toks = kernelName.split(".")
+    getKernel( toks.dropRight(1).mkString("."), toks.last )
+  }
+
   def execute( request: TaskRequest, run_args: Map[String,Any] ): xml.Elem = {
     logger.info("Execute { request: " + request.toString + ", runargs: " + run_args.toString + "}"  )
     val data_manager = new DataManager( request.domainMap )
@@ -50,22 +69,17 @@ class CDS2ExecutionManager {
     executeWorkflows( request.workflows, data_manager, run_args ).toXml
   }
 
+  def describeProcess( kernelName: String ): xml.Elem = getKernel( kernelName ).toXml
+
+  def listProcesses(): xml.Elem = kernelManager.toXml
+
   def executeWorkflows( workflows: List[WorkflowContainer], data_manager: DataManager, run_args: Map[String,Any] ): ExecutionResults = {
-//    val kernelManager = new kernels.KernelManager()
-    new ExecutionResults( workflows.map( workflow => workflow.operations.map( operation => demoOperationExecution( operation, data_manager,  run_args ) ).flatten ).flatten )
+    new ExecutionResults( workflows.map( workflow => workflow.operations.map( operation => operationExecution( operation, data_manager,  run_args ) ).flatten ).flatten )
   }
 
-  def demoOperationExecution(operation: OperationContainer, data_manager: DataManager, run_args: Map[String, Any]): List[ExecutionResult] = {
-    import nasa.nccs.cds2.modules._
-    import nasa.nccs.cds2.kernels.{ kernelManager, KernelManager }
+  def operationExecution(operation: OperationContainer, data_manager: DataManager, run_args: Map[String, Any]): List[ExecutionResult] = {
     val inputSubsets: List[cdm.Fragment] = operation.inputs.map(data_manager.getVariableData(_))
-    inputSubsets.map(inputSubset => {
-      kernelManager.getKernel(operation.name.toLowerCase) match {
-        case None => throw new Exception("Unrecognized Kernel: " + operation.name)
-        case Some(kernel) =>
-          kernel.execute( inputSubsets, run_args)
-      }
-    })
+    inputSubsets.map(inputSubset => { getKernel( operation.name.toLowerCase ).execute( inputSubsets, run_args) } )
   }
 }
 
