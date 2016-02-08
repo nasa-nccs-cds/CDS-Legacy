@@ -3,10 +3,15 @@ import ucar.nc2.time.CalendarDate
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import scala.collection.mutable
+import scala.reflect.runtime.{universe=>ru}
 
 object cdsutils {
 
   def flatlist[T]( values: Option[T]* ): List[T] = values.flatten.toList
+
+  def getTypeTag[T: ru.TypeTag](obj: T) = ru.typeTag[T]
+
+  def getInstance[T]( cls: Class[T] ) = cls.getConstructor().newInstance()
 
   def findNonNull[T]( values: T* ): Option[T] = values.toList.find( _ != null )
 

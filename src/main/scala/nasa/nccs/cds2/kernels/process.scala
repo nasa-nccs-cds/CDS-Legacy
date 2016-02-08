@@ -1,6 +1,7 @@
 package nasa.nccs.cds2.kernels
 import nasa.nccs.cds2.cdm
 import nasa.nccs.cds2.engine.ExecutionResult
+import nasa.nccs.cds2.utilities.cdsutils
 import org.slf4j.LoggerFactory
 
 object Port {
@@ -21,7 +22,7 @@ class Port( val name: String, val cardinality: String, val description: String, 
 }
 
 
-abstract class Kernel( val inputs: List[Port], val outputs: List[Port], val description: String="", val keywords: List[String]=List(), val identifier: String="", val metadata:String="" ) {
+abstract class Kernel {
   val logger = LoggerFactory.getLogger(classOf[Kernel])
   val identifiers = this.getClass.getName.split('$').flatMap( _.split('.') )
   def operation: String = identifiers.last
@@ -29,19 +30,22 @@ abstract class Kernel( val inputs: List[Port], val outputs: List[Port], val desc
   def id   = identifiers.mkString(".")
   def name = identifiers.takeRight(2).mkString(".")
 
+  val inputs: List[Port]
+  val outputs: List[Port]
+  val description: String = ""
+  val keywords: List[String] = List()
+  val identifier: String = ""
+  val metadata: String = ""
+
   def execute(inputSubsets: List[cdm.Fragment], run_args: Map[String, Any]): ExecutionResult
+  def toXmlHeader =  <kernel module={module} name={name}> { if (description.nonEmpty) <description> {description} </description> } </kernel>
 
   def toXml = {
     <kernel module={module} name={name}>
-      {if (description.nonEmpty) <description>
-      {description}
-    </description>}{if (keywords.nonEmpty) <keywords>
-      {keywords.mkString(",")}
-    </keywords>}{if (identifier.nonEmpty) <identifier>
-      {identifier}
-    </identifier>}{if (metadata.nonEmpty) <metadata>
-      {metadata}
-    </metadata>}
+      {if (description.nonEmpty) <description>{description}</description> }
+      {if (keywords.nonEmpty) <keywords> {keywords.mkString(",")} </keywords> }
+      {if (identifier.nonEmpty) <identifier> {identifier} </identifier> }
+      {if (metadata.nonEmpty) <metadata> {metadata} </metadata> }
     </kernel>
   }
 }
@@ -54,17 +58,21 @@ class KernelModule {
   val organization = ""
   val author = ""
   val contact = ""
+  val kernelMap: Map[String,Kernel] = Map(getKernelObjects.map( kernel => kernel.name -> kernel ): _*)
 
-  def getKernelClasses = this.getClass.getClasses.toList.filter( _.getSuperclass.getName.split('.').last == "Kernel"  )
+  def getKernelClasses = getInnerClasses.filter( _.getSuperclass.getName.split('.').last == "Kernel"  )
+  def getInnerClasses = this.getClass.getClasses.toList
+  def getKernelObjects = getKernelClasses.map( _.getDeclaredConstructors()(0).newInstance(this).asInstanceOf[Kernel] )
+
+  def getKernel( kernelName: String ): Option[Kernel] = kernelMap.get( kernelName )
 
   def toXml = {
-
     <kernelModule name={name}>
-      { if ( version.nonEmpty ) <description> {version} </description> }
-      { if ( organization.nonEmpty ) <datatype> {organization} </datatype> }
-      { if ( author.nonEmpty ) <identifier> {author} </identifier> }
-      { if ( contact.nonEmpty ) <identifier> {contact} </identifier> }
-
+      { if ( version.nonEmpty ) <version> {version} </version> }
+      { if ( organization.nonEmpty ) <organization> {organization} </organization> }
+      { if ( author.nonEmpty ) <author> {author} </author> }
+      { if ( contact.nonEmpty ) <contact> {contact} </contact> }
+      <kernels> { kernelMap.values.map( _.toXmlHeader ) } </kernels>
     </kernelModule>
   }
 }

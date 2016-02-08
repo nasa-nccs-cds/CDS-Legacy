@@ -3,6 +3,7 @@ package nasa.nccs.cds2.modules.CDS
 import nasa.nccs.cds2.cdm
 import nasa.nccs.cds2.engine.{ExecutionResult, ExecutionResults}
 import nasa.nccs.cds2.kernels.{ Kernel, Port, KernelModule }
+import nasa.nccs.cds2.utilities.cdsutils
 import org.nd4j.linalg.factory.Nd4j
 
 class CDS extends KernelModule {
@@ -11,7 +12,11 @@ class CDS extends KernelModule {
   override val author = "Thomas Maxwell"
   override val contact = "thomas.maxwell@nasa.gov"
 
-  class average extends Kernel(List(Port("input fragment", "1")), List(Port("result", "1")), "Average over Input Fragment") {
+  class average extends Kernel {
+    val inputs = List(Port("input fragment", "1"))
+    val outputs = List(Port("result", "1"))
+    override val description = "Average over Input Fragment"
+
     def execute(inputSubsets: List[cdm.Fragment], run_args: Map[String, Any]): ExecutionResult = {
       val inputSubset = inputSubsets.head
       val result = Array[Float](Nd4j.mean(inputSubset.ndArray).getFloat(0))
@@ -19,10 +24,11 @@ class CDS extends KernelModule {
       new ExecutionResult(Array.emptyFloatArray)
     }
   }
-
 }
+
 
 object modTest extends App {
   val cds = new CDS()
-  cds.getKernels
+  val km = cds.kernelMap
+  println( cds.toXml.toString )
 }
