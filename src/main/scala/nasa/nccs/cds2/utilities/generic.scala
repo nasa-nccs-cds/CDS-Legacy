@@ -17,6 +17,8 @@ object cdsutils {
 
   def cdata(obj: Any): String = "<![CDATA[\n " + obj.toString + "\n]]>"
 
+  def isValid(obj: Any): Boolean = Option(obj) match { case Some(x) => true; case None => false }
+
   object dateTimeParser {
     import com.joestelmach.natty
     private val parser = new natty.Parser()
