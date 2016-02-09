@@ -31,6 +31,8 @@ object Library {
   val joda           = "joda-time"          % "joda-time"       % "2.8.1"
   val natty          = "com.joestelmach"    % "natty"           % "0.11"
   val guava          = "com.google.guava"   % "guava"           % "18.0"
+
+  val kernelmod      = "nasa.nccs"   %% "kernel-module-template"    % "1.0-SNAPSHOT"
 }
 
 object Dependencies {
@@ -50,6 +52,8 @@ object Dependencies {
   val ndarray = Seq( nd4s, nd4j )
 
   val netcdf = Seq( cdm, clcommon, netcdf4, opendap, httpservices, udunits )  // Currently unmanaged
+
+  val kernels = Seq( kernelmod )
 }
 
 

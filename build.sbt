@@ -8,14 +8,7 @@ scalaVersion := "2.11.7"
 
 organization := "nasa.nccs"
 
-kernelPackages := Seq[String]( "nasa.nccs.cds2.modules.CDS" )
-
-lazy val root = (project in file(".")).
-  enablePlugins(BuildInfoPlugin).
-  settings(
-    buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion, kernelPackages),
-    buildInfoPackage := "cdsbt"
-  )
+lazy val root = project in file(".")
 
 ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) }
 
@@ -26,6 +19,8 @@ ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) }
 libraryDependencies ++= Dependencies.scala
 
 libraryDependencies ++= Dependencies.ndarray
+
+libraryDependencies ++= Dependencies.kernels
 
 // libraryDependencies ++= Dependencies.spark
 

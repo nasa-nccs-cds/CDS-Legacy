@@ -1,5 +1,6 @@
 package nasa.nccs.cds2.cdm
 
+import nasa.nccs.cdapi.kernels.DataFragment
 import nasa.nccs.cds2.cdm
 import nasa.nccs.cds2.loaders.Collection
 import java.util.Date
@@ -145,7 +146,7 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
     result
   }
 
-  def loadRoi(roi: List[DomainAxis]): Fragment = {
+  def loadRoi(roi: List[DomainAxis]): DataFragment = {
     val roiSection: ma2.Section = getSubSection(roi)
     findSubset(roiSection) match {
       case None =>
@@ -157,7 +158,7 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
     }
   }
 
-  def addSubset( roiSection: ma2.Section, ndArray: INDArray ): Fragment = {
+  def addSubset( roiSection: ma2.Section, ndArray: INDArray ): DataFragment = {
     val subset = new Fragment(this, roiSection, ndArray )
     subsets += subset
     subset
@@ -176,9 +177,11 @@ object Fragment {
   def sectionToIndices( section: ma2.Section ): List[INDArrayIndex] = section.getRanges.map( range => NDArrayIndex.interval( range.first, range.last ) ).toList
 }
 
-class Fragment( val variable: CDSVariable, val roiSection: ma2.Section, val ndArray: INDArray ) {
+class Fragment( val variable: CDSVariable, val roiSection: ma2.Section, val ndArray: INDArray ) extends DataFragment {
 
   override def toString = { "Fragment: shape = %s, section = %s".format( ndArray.shape.toString, roiSection.toString ) }
+
+  override def data = ndArray
 
   def cutNewSubset( newSection: ma2.Section, copy: Boolean ): Fragment = {
     if (roiSection.equals( newSection )) this
@@ -189,7 +192,7 @@ class Fragment( val variable: CDSVariable, val roiSection: ma2.Section, val ndAr
     }
   }
 
-  def shape = ndArray.shape.toList
+  override def shape = ndArray.shape.toList
 }
 
 object sectionTest extends App {
@@ -199,7 +202,3 @@ object sectionTest extends App {
   println( s2 )
 }
 
-object sbtTest extends App {
-  val s2 = cdsutils.getKernelPackages
-  println( s2 )
-}

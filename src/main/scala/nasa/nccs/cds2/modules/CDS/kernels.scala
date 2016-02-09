@@ -1,9 +1,5 @@
 package nasa.nccs.cds2.modules.CDS
-
-import nasa.nccs.cds2.cdm
-import nasa.nccs.cds2.engine.{ExecutionResult, ExecutionResults}
-import nasa.nccs.cds2.kernels.{ Kernel, Port, KernelModule }
-import nasa.nccs.cds2.utilities.cdsutils
+import nasa.nccs.cdapi.kernels.{ Kernel, Port, KernelModule, ExecutionResult, DataFragment }
 import org.nd4j.linalg.factory.Nd4j
 
 class CDS extends KernelModule {
@@ -17,18 +13,11 @@ class CDS extends KernelModule {
     val outputs = List(Port("result", "1"))
     override val description = "Average over Input Fragment"
 
-    def execute(inputSubsets: List[cdm.Fragment], run_args: Map[String, Any]): ExecutionResult = {
+    def execute(inputSubsets: List[DataFragment], run_args: Map[String, Any]): ExecutionResult = {
       val inputSubset = inputSubsets.head
-      val result = Array[Float](Nd4j.mean(inputSubset.ndArray).getFloat(0))
+      val result = Array[Float](Nd4j.mean(inputSubset.data).getFloat(0))
       logger.info("Kernel %s: Executed operation %s, result = %s ".format(name, operation, result.mkString("[", ",", "]")))
       new ExecutionResult(Array.emptyFloatArray)
     }
   }
-}
-
-
-object modTest extends App {
-  val cds = new CDS()
-  val km = cds.kernelMap
-  println( cds.toXml.toString )
 }

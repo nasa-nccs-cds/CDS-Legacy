@@ -8,7 +8,8 @@ import org.nd4j.linalg.factory.Nd4j
 import org.slf4j.LoggerFactory
 import scala.collection.mutable
 import nasa.nccs.cds2.utilities.cdsutils
-import nasa.nccs.cds2.kernels.{ KernelModule, kernelManager, Kernel }
+import nasa.nccs.cds2.kernels.kernelManager
+import nasa.nccs.cdapi.kernels.{ Kernel, KernelModule, ExecutionResult, ExecutionResults, DataFragment }
 
 
 //object cds2PluginExecutionManager extends PluginExecutionManager {
@@ -20,26 +21,6 @@ import nasa.nccs.cds2.kernels.{ KernelModule, kernelManager, Kernel }
 //  }
 //}
 
-class ExecutionResult( val result_data: Array[Float] ) {
-  def toXml = <result> { result_data.mkString( " ", ",", " " ) } </result>  // cdsutils.cdata(
-}
-
-class ExecutionResults( val results: List[ExecutionResult] ) {
-    def toXml = <execution> {  results.map(_.toXml )  } </execution>
-}
-
-class SingleInputExecutionResult( val operation: String, input: cdm.CDSVariable, result_data: Array[Float] ) extends ExecutionResult(result_data) {
-  val name = input.name
-  val description = input.description
-  val units = input.units
-  val dataset =  input.dataset.name
-
-  override def toXml =
-    <operation id={ operation }>
-      <input name={ name } dataset={ dataset } units={ units } description={ description }  />
-      { super.toXml }
-    </operation>
-}
 
 class CDS2ExecutionManager {
   val logger = LoggerFactory.getLogger(classOf[CDS2ExecutionManager])
@@ -78,7 +59,7 @@ class CDS2ExecutionManager {
   }
 
   def operationExecution(operation: OperationContainer, data_manager: DataManager, run_args: Map[String, Any]): List[ExecutionResult] = {
-    val inputSubsets: List[cdm.Fragment] = operation.inputs.map(data_manager.getVariableData(_))
+    val inputSubsets: List[DataFragment] = operation.inputs.map(data_manager.getVariableData(_))
     inputSubsets.map(inputSubset => { getKernel( operation.name.toLowerCase ).execute( inputSubsets, run_args) } )
   }
 }
@@ -86,7 +67,7 @@ class CDS2ExecutionManager {
 class DataManager( val domainMap: Map[String,DomainContainer] ) {
   val logger = org.slf4j.LoggerFactory.getLogger("nasa.nccs.cds2.engine.DataManager")
   var datasets = mutable.Map[String,cdm.CDSDataset]()
-  var subsets = mutable.Map[String,cdm.Fragment]()
+  var subsets = mutable.Map[String,DataFragment]()
 
   def getDataset( data_source: DataSource ): cdm.CDSDataset = {
     val datasetName = data_source.collection.toLowerCase
@@ -105,14 +86,14 @@ class DataManager( val domainMap: Map[String,DomainContainer] ) {
     }
   }
 
-  def getVariableData(uid: String): cdm.Fragment = {
+  def getVariableData(uid: String): DataFragment = {
     subsets.get(uid) match {
       case Some(subset) => subset
       case None => throw new Exception("Can't find subset Data for Variable $uid")
     }
   }
 
-  def loadVariableData(uid: String, data_source: DataSource): cdm.Fragment = {
+  def loadVariableData(uid: String, data_source: DataSource): DataFragment = {
     subsets.get(uid) match {
       case Some(subset) => subset
       case None =>
@@ -120,10 +101,10 @@ class DataManager( val domainMap: Map[String,DomainContainer] ) {
         domainMap.get(data_source.domain) match {
           case Some(domain_container) =>
             val variable = dataset.loadVariable(data_source.name)
-            val Fragment: cdm.Fragment = variable.loadRoi(domain_container.axes)
-            subsets += uid -> Fragment
-            logger.info("Loaded variable %s (%s:%s) subset data, shape = %s ".format(uid, data_source.collection, data_source.name, Fragment.shape.toString) )
-            Fragment
+            val fragment = variable.loadRoi(domain_container.axes)
+            subsets += uid -> fragment
+            logger.info("Loaded variable %s (%s:%s) subset data, shape = %s ".format(uid, data_source.collection, data_source.name, fragment.shape.toString) )
+            fragment
           case None =>
             throw new Exception("Undefined domain for dataset " + data_source.name + ", domain = " + data_source.domain)
         }

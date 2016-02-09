@@ -30,11 +30,6 @@ object cdsutils {
     }
   }
 
-  def getKernelPackages: Seq[String] = {
-      import cdsbt.BuildInfo._
-      kernelPackages
-  }
-
 //  def loadExtensionModule( jar_file: String, module: Class ): Unit = {
 //    var classLoader = new java.net.URLClassLoader( Array(new java.io.File( jar_file ).toURI.toURL ), this.getClass.getClassLoader)
 //    var clazzExModule = classLoader.loadClass(module.GetClass.GetName + "$") // the suffix "$" is for Scala "object",
