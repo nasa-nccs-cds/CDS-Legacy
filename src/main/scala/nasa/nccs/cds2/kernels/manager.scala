@@ -12,10 +12,7 @@ class KernelMgr(  ) {
 
   def getModule( moduleName: String ): Option[KernelModule] = kernelModules.get(moduleName)
 
-  def isKernelModuleJar(jarFile: JarFile): Boolean = {
-    val manifest = jarFile.getManifest
-    cdsutils.isValid(manifest) && (manifest.getMainAttributes.getValue("Specification-Title") == "CDS2KernelModule")
-  }
+  def isKernelModuleJar(jarFile: JarFile): Boolean = cdsutils.getJarAttribute( jarFile, "Specification-Title" ) == "CDS2KernelModule"
 
   def getKernelModules(jarFile: JarFile): Iterator[KernelModule] =
     for( cls <- cdsutils.getClassesFromJar(jarFile); if cls.getSuperclass.getName == "nasa.nccs.cdapi.kernels.KernelModule") yield cls.getDeclaredConstructors()(0).newInstance().asInstanceOf[KernelModule]

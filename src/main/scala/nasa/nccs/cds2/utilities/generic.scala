@@ -27,6 +27,11 @@ object cdsutils {
     for ( cpitem <- cpitems; fileitem = new File(cpitem); if fileitem.isFile && fileitem.getName.toLowerCase.endsWith(".jar") ) yield new JarFile(fileitem)
   }
 
+  def getJarAttribute(jarFile: JarFile, attribute_name: String ): String = {
+    val manifest = jarFile.getManifest
+    if( isValid(manifest) ) manifest.getMainAttributes.getValue(attribute_name) else ""
+  }
+
   def getClassesFromJar(jarFile: JarFile): Iterator[Class[_]] = {
     import java.net.{URL, URLClassLoader}, java.util.jar.JarEntry
     val cloader: URLClassLoader = URLClassLoader.newInstance(Array(new URL("jar:file:" + jarFile.getName + "!/")))
