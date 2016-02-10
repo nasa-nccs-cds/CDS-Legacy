@@ -1,4 +1,5 @@
 package nasa.nccs.cds2.kernels
+import java.util.jar.{JarEntry, JarFile}
 import nasa.nccs.cdapi.kernels.KernelModule
 import nasa.nccs.cds2.utilities.cdsutils
 import collection.mutable
@@ -11,24 +12,22 @@ class KernelMgr(  ) {
 
   def getModule( moduleName: String ): Option[KernelModule] = kernelModules.get(moduleName)
 
+  def isKernelModuleJar(jarFile: JarFile): Boolean = {
+    val manifest = jarFile.getManifest
+    cdsutils.isValid(manifest) && (manifest.getMainAttributes.getValue("Specification-Title") == "CDS2KernelModule")
+  }
+
+  def getKernelModules(jarFile: JarFile): Iterator[KernelModule] =
+    for( cls <- cdsutils.getClassesFromJar(jarFile); if cls.getSuperclass.getName == "nasa.nccs.cdapi.kernels.KernelModule") yield cls.getDeclaredConstructors()(0).newInstance().asInstanceOf[KernelModule]
+
   def toXml = <modules>{ kernelModules.values.map( _.toXml ) } </modules>
 
   def collectKernelModules(): Map[String, KernelModule] = {
-    import nasa.nccs.cds2.modules.CDS.CDS, java.io.File, java.net.{URL, URLClassLoader}, java.util.jar.{JarFile, JarEntry}
-    val kernelModules = new mutable.ListBuffer[KernelModule]
-    kernelModules += new CDS()
-    for ( cpitem <- System.getProperty("java.class.path").split(File.pathSeparator);
-          fileitem = new File(cpitem); if fileitem.isFile && fileitem.getName.toLowerCase.endsWith(".jar");
-          jarFile = new JarFile(fileitem); manifest = jarFile.getManifest
-          if cdsutils.isValid(manifest) && (manifest.getMainAttributes.getValue("Specification-Title") == "CDS2KernelModule") ) {
-      val cloader: URLClassLoader = URLClassLoader.newInstance(Array(new URL("jar:file:" + fileitem + "!/")))
-      for ( je: JarEntry <- jarFile.entries; ename = je.getName; if ename.endsWith(".class");
-            cls = cloader.loadClass(ename.substring(0, ename.length - 6).replace('/', '.'))
-            if cls.getSuperclass.getName == "nasa.nccs.cdapi.kernels.KernelModule" )  {
-        kernelModules += cls.getDeclaredConstructors()(0).newInstance().asInstanceOf[KernelModule]
-      }
-    }
-    Map(kernelModules.map(km => km.name -> km): _*)
+    val kernelModules = new mutable.HashMap[String, KernelModule]()
+    val cds = new nasa.nccs.cds2.modules.CDS.CDS()
+    kernelModules += (cds.name -> cds)
+    for (jarFile <- cdsutils.getProjectJars; if isKernelModuleJar(jarFile); kmod <- getKernelModules(jarFile) ) kernelModules += (kmod.name -> kmod)
+    kernelModules.toMap
   }
 }
 

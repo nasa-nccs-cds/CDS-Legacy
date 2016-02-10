@@ -1,4 +1,6 @@
 package nasa.nccs.cds2.utilities
+
+import java.util.jar.JarFile
 import ucar.nc2.time.CalendarDate
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
@@ -18,6 +20,20 @@ object cdsutils {
   def cdata(obj: Any): String = "<![CDATA[\n " + obj.toString + "\n]]>"
 
   def isValid(obj: Any): Boolean = Option(obj) match { case Some(x) => true; case None => false }
+
+  def getProjectJars: Array[JarFile] = {
+    import java.io.File
+    val cpitems = System.getProperty("java.class.path").split(File.pathSeparator)
+    for ( cpitem <- cpitems; fileitem = new File(cpitem); if fileitem.isFile && fileitem.getName.toLowerCase.endsWith(".jar") ) yield new JarFile(fileitem)
+  }
+
+  def getClassesFromJar(jarFile: JarFile): Iterator[Class[_]] = {
+    import java.net.{URL, URLClassLoader}, java.util.jar.JarEntry
+    val cloader: URLClassLoader = URLClassLoader.newInstance(Array(new URL("jar:file:" + jarFile.getName + "!/")))
+    for (je: JarEntry <- jarFile.entries; ename = je.getName; if ename.endsWith(".class");
+         cls = cloader.loadClass(ename.substring(0, ename.length - 6).replace('/', '.')) ) yield cls
+  }
+
 
   object dateTimeParser {
     import com.joestelmach.natty
