@@ -28,7 +28,7 @@ class CDS2ExecutionManager {
   def getKernelModule( moduleName: String  ): KernelModule = {
     kernelManager.getModule( moduleName  ) match {
       case Some(kmod) => kmod
-      case None => throw new Exception("Unrecognized Kernel Module: " +  moduleName )
+      case None => throw new Exception("Unrecognized Kernel Module %s, modules = %s ".format( moduleName, kernelManager.getModuleNames.mkString("[ ",", "," ]") ) )
     }
   }
   def getKernel( moduleName: String, operation: String  ): Kernel = {
@@ -39,7 +39,7 @@ class CDS2ExecutionManager {
     }
   }
   def getKernel( kernelName: String  ): Kernel = {
-    val toks = kernelName.split(".")
+    val toks = kernelName.split('.')
     getKernel( toks.dropRight(1).mkString("."), toks.last )
   }
 
@@ -116,10 +116,10 @@ object SampleTaskRequests {
 
   def getAnomalyTimeseries: TaskRequest = {
     import nasa.nccs.esgf.process.DomainAxis.Type._
-    val workflows = List[WorkflowContainer]( new WorkflowContainer( operations = List( new OperationContainer( identifier = "CWT.average~ivar#1",  name ="CWT.average", result = "ivar#1", inputs = List("v0"), optargs = Map("axis" -> "xy") )  ) ) )
+    val workflows = List[WorkflowContainer]( new WorkflowContainer( operations = List( new OperationContainer( identifier = "CDS.average~ivar#1",  name ="CDS.average", result = "ivar#1", inputs = List("v0"), optargs = Map("axis" -> "xy") )  ) ) )
     val variableMap = Map[String,DataContainer]( "v0" -> new DataContainer( uid="v0", source = Some(new DataSource( name = "hur", collection = "merra/mon/atmos", domain = "d0" ) ) ) )
     val domainMap = Map[String,DomainContainer]( "d0" -> new DomainContainer( name = "d0", axes = cdsutils.flatlist( DomainAxis(Lev,1,1), DomainAxis(Lat,100,100), DomainAxis(Lon,100,100) ) ) )
-    new TaskRequest( "CWT.anomaly", variableMap, domainMap, workflows )
+    new TaskRequest( "CDS.anomaly", variableMap, domainMap, workflows )
   }
 
   def getCacheChunk: TaskRequest = {

@@ -4,11 +4,13 @@ import nasa.nccs.cdapi.kernels.DataFragment
 import nasa.nccs.cds2.cdm
 import nasa.nccs.cds2.loaders.Collection
 import java.util.Date
+import nasa.nccs.cds2.tensors.Nd4jTensor
 import nasa.nccs.cds2.utilities.cdsutils
 import nasa.nccs.esgf.utilities.numbers.GenericNumber
 import org.nd4j.linalg.indexing.{NDArrayIndex, INDArrayIndex}
 import ucar.nc2.time.{CalendarDate, CalendarDateRange}
 import nasa.nccs.esgf.process.DomainAxis
+import nasa.nccs.cdapi.tensors.AbstractTensor
 import org.nd4j.linalg.api.ndarray.INDArray
 import ucar.{ma2, nc2}
 import ucar.nc2.Variable
@@ -152,47 +154,46 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
       case None =>
         val array = ncVariable.read(roiSection)
         val ndArray: INDArray = getNDArray(array)
-        addSubset( roiSection, ndArray )
+        addSubset( roiSection, new Nd4jTensor(ndArray) )
       case Some(subset) =>
         subset
     }
   }
 
-  def addSubset( roiSection: ma2.Section, ndArray: INDArray ): DataFragment = {
-    val subset = new Fragment(this, roiSection, ndArray )
+  def addSubset( roiSection: ma2.Section, array: AbstractTensor ): DataFragment = {
+    val subset = new Fragment( array, roiSection )
     subsets += subset
     subset
   }
 
   def findSubset( requestedSection: ma2.Section, copy: Boolean=false ): Option[Fragment] = {
-    val validSubsets = subsets.filter( _.roiSection.contains(requestedSection) )
+    val validSubsets = subsets.filter( _.contains(requestedSection) )
     validSubsets.size match {
       case 0 => None;
-      case _ => Some( validSubsets.minBy( _.roiSection.computeSize ).cutNewSubset(requestedSection, copy ) )
+      case _ => Some( validSubsets.minBy( _.size ).cutNewSubset(requestedSection, copy ) )
     }
   }
 }
 
 object Fragment {
-  def sectionToIndices( section: ma2.Section ): List[INDArrayIndex] = section.getRanges.map( range => NDArrayIndex.interval( range.first, range.last ) ).toList
+  def sectionToIndices( section: ma2.Section ): List[(Int,Int)] = section.getRanges.map( range => ( range.first, range.last ) ).toList
 }
 
-class Fragment( val variable: CDSVariable, val roiSection: ma2.Section, val ndArray: INDArray ) extends DataFragment {
+class Fragment( array: AbstractTensor, roiSection: ma2.Section, metaDataVar: (String, String)*  ) extends DataFragment( array, metaDataVar:_* ) {
+  val LOG = org.slf4j.LoggerFactory.getLogger(this.getClass)
 
-  override def toString = { "Fragment: shape = %s, section = %s".format( ndArray.shape.toString, roiSection.toString ) }
-
-  override def data = ndArray
+  override def toString = { "Fragment: shape = %s, section = %s".format( array.shape.toString, roiSection.toString ) }
 
   def cutNewSubset( newSection: ma2.Section, copy: Boolean ): Fragment = {
     if (roiSection.equals( newSection )) this
     else {
       val relativeSection = newSection.shiftOrigin( roiSection )
-      val newDataArray = ndArray.get( Fragment.sectionToIndices(relativeSection):_* )
-      new Fragment( this.variable, newSection, if(copy) newDataArray.dup() else newDataArray )
+      val newDataArray = array( Fragment.sectionToIndices(relativeSection):_* )
+      new Fragment( if(copy) array.dup() else newDataArray, newSection )
     }
   }
-
-  override def shape = ndArray.shape.toList
+  def size: Long = roiSection.computeSize
+  def contains( requestedSection: ma2.Section ): Boolean = roiSection.contains( requestedSection )
 }
 
 object sectionTest extends App {

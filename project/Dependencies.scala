@@ -17,6 +17,7 @@ object Library {
   val scalaTest      = "org.scalatest"     %% "scalatest"       % Version.scalaTest
   val slf4jApi       = "org.slf4j"         %  "slf4j-api"       % Version.slf4j
   val sparkSQL       = "org.apache.spark"  %% "spark-sql"       % Version.spark
+  val sparkCore      = "org.apache.spark"  %% "spark-core"      % "1.6.0"
   val scalaxml       = "org.scala-lang.modules" %% "scala-xml"  % "1.0.3"
   val scalaparser    = "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.3"
 
@@ -31,8 +32,8 @@ object Library {
   val joda           = "joda-time"          % "joda-time"       % "2.8.1"
   val natty          = "com.joestelmach"    % "natty"           % "0.11"
   val guava          = "com.google.guava"   % "guava"           % "18.0"
-
-  val kernelmod      = "nasa.nccs"   %% "kernel-module-template"    % "1.0-SNAPSHOT"
+  val breeze         = "org.scalanlp"      %% "breeze"          % "0.12"
+  val kernelmod      = "nasa.nccs"         %% "kermodbase"      % "1.0-SNAPSHOT"
 }
 
 object Dependencies {
@@ -45,11 +46,11 @@ object Dependencies {
     scalaTest      % "test",
     mockitoAll     % "test"
   )
-  val scala = Seq( logbackClassic, joda, natty, guava )
+  val scala = Seq( logbackClassic, joda, natty )
 
-  val spark = Seq( sparkSQL )
+  val spark = Seq( sparkCore )
 
-  val ndarray = Seq( nd4s, nd4j )
+  val ndarray = Seq( nd4s, nd4j, breeze )
 
   val netcdf = Seq( cdm, clcommon, netcdf4, opendap, httpservices, udunits )  // Currently unmanaged
 

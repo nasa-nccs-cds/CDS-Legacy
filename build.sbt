@@ -22,7 +22,7 @@ libraryDependencies ++= Dependencies.ndarray
 
 libraryDependencies ++= Dependencies.kernels
 
-// libraryDependencies ++= Dependencies.spark
+libraryDependencies ++= Dependencies.spark
 
 
 
