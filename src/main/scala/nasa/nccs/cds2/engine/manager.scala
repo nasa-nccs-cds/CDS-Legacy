@@ -23,7 +23,7 @@ import nasa.nccs.cdapi.kernels.{ Kernel, KernelModule, ExecutionResult, Executio
 
 
 class CDS2ExecutionManager {
-  val logger = LoggerFactory.getLogger(classOf[CDS2ExecutionManager])
+  val logger = LoggerFactory.getLogger(this.getClass)
 
   def getKernelModule( moduleName: String  ): KernelModule = {
     kernelManager.getModule( moduleName  ) match {

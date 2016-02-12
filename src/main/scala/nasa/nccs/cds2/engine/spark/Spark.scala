@@ -1,10 +1,6 @@
-package nasa.nccs.cds2.engine
-import nasa.nccs.esgf.process.TaskRequest
-import org.apache.spark.SparkConf
-import org.apache.spark.SparkContext
+package nasa.nccs.cds2.engine.spark
 
-// import org.apache.spark.{SparkContext, SparkConf}
-import org.slf4j.Logger
+import org.apache.spark.{SparkContext, SparkConf}
 import org.slf4j.LoggerFactory
 
 class SparkEngine
