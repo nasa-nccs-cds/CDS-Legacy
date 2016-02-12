@@ -32,7 +32,7 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
   val shape = ncVariable.getShape.toList
   val fullname = ncVariable.getFullName
   val attributes = nc2.Attribute.makeMap(ncVariable.getAttributes).toMap
-  val subsets = mutable.ListBuffer[Fragment]()
+  val subsets = mutable.ListBuffer[PartitionedFragment]()
 
   override def toString = "\nCDSVariable(%s) { description: '%s', shape: %s, dims: %s, }\n  --> Variable Attributes: %s".format(name, description, shape.mkString("[", " ", "]"), dims.mkString("[", ",", "]"), attributes.mkString("\n\t\t", "\n\t\t", "\n"))
 
@@ -148,7 +148,32 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
     result
   }
 
-  def loadRoi(roi: List[DomainAxis]): DataFragment = {
+  def loadRoiPartition(roi: List[DomainAxis], partIndex: Int, partAxis: Char, nPart: Int): PartitionedFragment = {
+    dataset.getCoordinateAxis(partAxis) match {
+      case Some(partitionAxis) =>
+        val partAxisIndex = ncVariable.findDimensionIndex(partitionAxis.getShortName)
+        assert(partAxisIndex != -1, "CDS2-CDSVariable: Can't find axis %s in variable %s".format(partitionAxis.getShortName, ncVariable.getNameAndDimensions))
+        val roiSection: ma2.Section = getSubSection(roi)
+        val sp = new SectionPartitioner( roiSection, nPart )
+        sp.getPartition(partIndex, partAxisIndex) match {
+          case Some(partSection) =>
+            findSubset(partSection) match {
+              case None =>
+                val array = ncVariable.read(partSection)
+                val ndArray: INDArray = getNDArray(array)
+                addSubset( roiSection, new Nd4jTensor(ndArray) )
+              case Some(subset) =>
+                subset
+            }
+          case None =>
+            logger.warn( "No fragment generated for partition index %s out of %d parts".format( partIndex, nPart ) )
+            new PartitionedFragment()
+        }
+      case None => throw new IllegalStateException("CDS2-CDSVariable: Can't find coord axis type %c in variable %s".format(partAxis, ncVariable.getNameAndDimensions))
+    }
+  }
+
+  def loadRoi(roi: List[DomainAxis]): PartitionedFragment = {
     val roiSection: ma2.Section = getSubSection(roi)
     findSubset(roiSection) match {
       case None =>
@@ -160,13 +185,13 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
     }
   }
 
-  def addSubset( roiSection: ma2.Section, array: AbstractTensor ): DataFragment = {
-    val subset = new Fragment( array, roiSection )
+  def addSubset( roiSection: ma2.Section, array: AbstractTensor ): PartitionedFragment = {
+    val subset = new PartitionedFragment( array, roiSection )
     subsets += subset
     subset
   }
 
-  def findSubset( requestedSection: ma2.Section, copy: Boolean=false ): Option[Fragment] = {
+  def findSubset( requestedSection: ma2.Section, copy: Boolean=false ): Option[PartitionedFragment] = {
     val validSubsets = subsets.filter( _.contains(requestedSection) )
     validSubsets.size match {
       case 0 => None;
@@ -175,21 +200,23 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
   }
 }
 
-object Fragment {
+object PartitionedFragment {
   def sectionToIndices( section: ma2.Section ): List[(Int,Int)] = section.getRanges.map( range => ( range.first, range.last ) ).toList
 }
 
-class Fragment( array: AbstractTensor, roiSection: ma2.Section, metaDataVar: (String, String)*  ) extends DataFragment( array, metaDataVar:_* ) {
+class PartitionedFragment( array: AbstractTensor, roiSection: ma2.Section, metaDataVar: (String, String)*  ) extends DataFragment( array, metaDataVar:_* ) {
   val LOG = org.slf4j.LoggerFactory.getLogger(this.getClass)
 
-  override def toString = { "Fragment: shape = %s, section = %s".format( array.shape.toString, roiSection.toString ) }
+  def this() = this( new Nd4jTensor(), new ma2.Section() )
 
-  def cutNewSubset( newSection: ma2.Section, copy: Boolean ): Fragment = {
+  override def toString = { "PartitionedFragment: shape = %s, section = %s".format( array.shape.toString, roiSection.toString ) }
+
+  def cutNewSubset( newSection: ma2.Section, copy: Boolean ): PartitionedFragment = {
     if (roiSection.equals( newSection )) this
     else {
       val relativeSection = newSection.shiftOrigin( roiSection )
-      val newDataArray = array( Fragment.sectionToIndices(relativeSection):_* )
-      new Fragment( if(copy) array.dup() else newDataArray, newSection )
+      val newDataArray = array( PartitionedFragment.sectionToIndices(relativeSection):_* )
+      new PartitionedFragment( if(copy) array.dup() else newDataArray, newSection )
     }
   }
   def size: Long = roiSection.computeSize

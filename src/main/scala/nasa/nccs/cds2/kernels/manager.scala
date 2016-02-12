@@ -23,7 +23,7 @@ class KernelMgr(  ) {
 
   def collectKernelModules(): Map[String, KernelModule] = {
     val kernelModules = new mutable.HashMap[String, KernelModule]()
-    val cds = new nasa.nccs.cds2.modules.CDS.CDS()
+    val cds = new nasa.nccs.cds2.modules.CDS()
     kernelModules += (cds.name.toLowerCase -> cds)
     for (jarFile <- cdsutils.getProjectJars; if isKernelModuleJar(jarFile); kmod <- getKernelModules(jarFile) ) kernelModules += (kmod.name -> kmod)
     kernelModules.toMap

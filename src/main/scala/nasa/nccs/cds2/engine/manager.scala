@@ -1,9 +1,11 @@
 package nasa.nccs.cds2.engine
 
 import nasa.nccs.cds2.cdm
+import nasa.nccs.cds2.cdm.{PartitionedFragment, CDSVariable}
 import nasa.nccs.cds2.loaders.Collections
 import nasa.nccs.esgf.process._
 import nasa.nccs.esgf.engine.PluginExecutionManager
+import org.apache.spark.rdd.RDD
 import org.nd4j.linalg.factory.Nd4j
 import org.slf4j.LoggerFactory
 import scala.collection.mutable
@@ -35,7 +37,7 @@ class CDS2ExecutionManager {
     val kmod = getKernelModule( moduleName )
     kmod.getKernel( operation  ) match {
       case Some(kernel) => kernel
-      case None => throw new Exception( s"Unrecognized Kernel $operation in Module $moduleName ")
+      case None => throw new Exception( s"Unrecognized Kernel %s in Module %s, kernels = %s ".format( operation, moduleName, kmod.getKernelNames.mkString("[ ",", "," ]")) )
     }
   }
   def getKernel( kernelName: String  ): Kernel = {
@@ -110,16 +112,25 @@ class DataManager( val domainMap: Map[String,DomainContainer] ) {
         }
     }
   }
+
 }
 
 object SampleTaskRequests {
 
-  def getAnomalyTimeseries: TaskRequest = {
+  def getAveTimeseries: TaskRequest = {
     import nasa.nccs.esgf.process.DomainAxis.Type._
     val workflows = List[WorkflowContainer]( new WorkflowContainer( operations = List( new OperationContainer( identifier = "CDS.average~ivar#1",  name ="CDS.average", result = "ivar#1", inputs = List("v0"), optargs = Map("axis" -> "xy") )  ) ) )
     val variableMap = Map[String,DataContainer]( "v0" -> new DataContainer( uid="v0", source = Some(new DataSource( name = "hur", collection = "merra/mon/atmos", domain = "d0" ) ) ) )
     val domainMap = Map[String,DomainContainer]( "d0" -> new DomainContainer( name = "d0", axes = cdsutils.flatlist( DomainAxis(Lev,1,1), DomainAxis(Lat,100,100), DomainAxis(Lon,100,100) ) ) )
-    new TaskRequest( "CDS.anomaly", variableMap, domainMap, workflows )
+    new TaskRequest( "CDS.average", variableMap, domainMap, workflows )
+  }
+
+  def getAveArray: TaskRequest = {
+    import nasa.nccs.esgf.process.DomainAxis.Type._
+    val workflows = List[WorkflowContainer]( new WorkflowContainer( operations = List( new OperationContainer( identifier = "CDS.average~ivar#1",  name ="CDS.average", result = "ivar#1", inputs = List("v0"), optargs = Map("axis" -> "xy") )  ) ) )
+    val variableMap = Map[String,DataContainer]( "v0" -> new DataContainer( uid="v0", source = Some(new DataSource( name = "hur", collection = "merra/mon/atmos", domain = "d0" ) ) ) )
+    val domainMap = Map[String,DomainContainer]( "d0" -> new DomainContainer( name = "d0", axes = cdsutils.flatlist( DomainAxis(Lev,1,1), DomainAxis(Lat,100,100) ) ) )
+    new TaskRequest( "CDS.average", variableMap, domainMap, workflows )
   }
 
   def getCacheChunk: TaskRequest = {
@@ -132,7 +143,7 @@ object SampleTaskRequests {
 }
 
 object executionTest extends App {
-  val request = SampleTaskRequests.getAnomalyTimeseries
+  val request = SampleTaskRequests.getAveTimeseries
   val run_args = Map[String,Any]()
   val cds2ExecutionManager = new CDS2ExecutionManager()
   val result = cds2ExecutionManager.execute( request, run_args )

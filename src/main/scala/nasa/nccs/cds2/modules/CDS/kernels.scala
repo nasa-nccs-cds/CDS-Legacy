@@ -1,4 +1,4 @@
-package nasa.nccs.cds2.modules.CDS
+package nasa.nccs.cds2.modules
 import nasa.nccs.cdapi.kernels.{ Kernel, Port, KernelModule, ExecutionResult, DataFragment }
 import nasa.nccs.cds2.kernels.KernelTools
 import org.nd4j.linalg.factory.Nd4j

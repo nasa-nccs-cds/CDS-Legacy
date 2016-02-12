@@ -4,6 +4,7 @@ import nasa.nccs.cds2.cdm
 import nasa.nccs.cds2.utilities.cdsutils
 import nasa.nccs.esgf.process.DomainAxis
 import org.nd4j.linalg.api.ndarray.INDArray
+import ucar.nc2.constants.AxisType
 import ucar.{ma2, nc2}
 import ucar.nc2.Variable
 import ucar.nc2.dataset.{ NetcdfDataset, CoordinateSystem, CoordinateAxis }
@@ -74,6 +75,16 @@ class CDSDataset( val name: String, val uri: String, val ncDataset: NetcdfDatase
       case DomainAxis.Type.Lat => Option( coordSystem.getLatAxis )
       case DomainAxis.Type.Lev => Option( coordSystem.getPressureAxis )
       case DomainAxis.Type.T => Option( coordSystem.getTaxis )
+    }
+  }
+  def getCoordinateAxis( axisClass: Char ): Option[CoordinateAxis] = {
+    axisClass.toLower match {
+      case 'x' => if( coordSystem.isGeoXY ) Option( coordSystem.getXaxis ) else Option( coordSystem.getLonAxis )
+      case 'y' => if( coordSystem.isGeoXY ) Option( coordSystem.getYaxis ) else Option( coordSystem.getLatAxis )
+      case 'z' =>
+        if( coordSystem.containsAxisType( AxisType.Pressure ) ) Option( coordSystem.getPressureAxis )
+        else if( coordSystem.containsAxisType( AxisType.Height ) ) Option( coordSystem.getHeightAxis ) else  Option( coordSystem.getZaxis )
+      case 't' => Option( coordSystem.getTaxis )
     }
   }
 }
