@@ -8,6 +8,7 @@ scalaVersion := "2.11.7"
 
 organization := "nasa.nccs"
 
+
 lazy val root = project in file(".")
 
 ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) }

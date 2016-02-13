@@ -20,9 +20,10 @@ class RDDataManager( val cdsContext: CDSparkContext, domainMap: Map[String,Domai
         domainMap.get(data_source.domain) match {
           case Some(domain_container) =>
             val variable = dataset.loadVariable(data_source.name)
+            val partAxis = 't'   // TODO: Compute this
             val pRDD = cdsContext.makeFragmentRDD( variable, domain_container.axes, partAxis: Char, nPart )
             prdds += uid -> pRDD
-            logger.info("Loaded variable %s (%s:%s) subset data, shape = %s ".format(uid, data_source.collection, data_source.name, pRDD.shape.toString) )
+            logger.info("Loaded variable %s (%s:%s) subset data, shape = %s ".format(uid, data_source.collection, data_source.name, "") ) // pRDD.shape.toString) )
             pRDD
           case None =>
             throw new Exception("Undefined domain for dataset " + data_source.name + ", domain = " + data_source.domain)
@@ -36,6 +37,7 @@ class CDSparkExecutionManager( val cdsContext: CDSparkContext ) extends CDS2Exec
   override def execute( request: TaskRequest, run_args: Map[String,Any] ): xml.Elem = {
     logger.info("Execute { request: " + request.toString + ", runargs: " + run_args.toString + "}"  )
     val data_manager = new RDDataManager( cdsContext, request.domainMap )
+    val nPart = 4  // TODO: Compute this
     for( data_container <- request.variableMap.values; if data_container.isSource )  data_manager.loadRDData( data_container.uid, data_container.getSource, nPart )
     executeWorkflows( request.workflows, data_manager, run_args ).toXml
   }

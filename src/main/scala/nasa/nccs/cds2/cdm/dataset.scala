@@ -18,7 +18,7 @@ import scala.collection.JavaConverters._
   */
 
 object CDSDataset {
-  val logger = org.slf4j.LoggerFactory.getLogger("nasa.nccs.cds2.cdm.dataset")
+  val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
 
   def load( dsetName: String, collection: Collection, varName: String = "" ) = {
     val uri = collection.getUri( varName )
