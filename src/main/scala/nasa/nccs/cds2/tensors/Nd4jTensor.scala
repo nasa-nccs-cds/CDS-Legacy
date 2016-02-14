@@ -30,7 +30,7 @@ class Nd4jTensor( val tensor: INDArray = new NDArray(), val invalid: Float = Flo
 
   def zeros(shape: Int*) = new Nd4jTensor(Nd4j.create(shape: _*))
 
-  def map(f: Float => Float) = new Nd4jTensor(tensor.map(p => f(p)))
+  def map(f: Double => Double) = new Nd4jTensor(tensor.map(p => f(p)))
 
   def put(value: Float, shape: Int*) = tensor.putScalar(shape.toArray, value)
 
@@ -76,9 +76,9 @@ class Nd4jTensor( val tensor: INDArray = new NDArray(), val invalid: Float = Flo
     new Nd4jTensor(IndArray)
   }
 
-  def apply(indexes: Int*) = tensor.get(indexes.toArray)
+  def apply(indexes: Int*) = tensor.get(indexes.toArray).toFloat
 
-  def data = tensor.data.asFloat()
+  def data: Array[Float] = tensor.data.asFloat
 
   /**
    * Utility Functions

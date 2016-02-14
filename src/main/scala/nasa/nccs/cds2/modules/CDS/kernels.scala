@@ -16,9 +16,17 @@ class CDS extends KernelModule with KernelTools {
 
     def execute(inputSubsets: List[DataFragment], run_args: Map[String, Any]): ExecutionResult = {
       val input_array = getNdArray(inputSubsets)
-      val result = Array[Float](Nd4j.mean(input_array).getFloat(0))
+      val mean_val = Nd4j.mean(input_array).getFloat(0)
+      val result = Array[Float](mean_val)
       logger.info("Kernel %s: Executed operation %s, result = %s ".format(name, operation, result.mkString("[", ",", "]")))
       new ExecutionResult(Array.emptyFloatArray)
     }
   }
+}
+
+object arrayTest extends App {
+  var data = Array(1.0.toFloat, 1.0.toFloat, Float.NaN )
+  var arr2 = Nd4j.create( data )
+  var fmean = arr2.mean(1)
+  println( "Mean: "+ fmean.toString )
 }
