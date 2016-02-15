@@ -7,6 +7,8 @@ import java.util.Date
 import nasa.nccs.cds2.tensors.Nd4jTensor
 import nasa.nccs.cds2.utilities.cdsutils
 import nasa.nccs.esgf.utilities.numbers.GenericNumber
+import org.nd4j.linalg.cpu.NDArray
+import org.nd4j.linalg.factory.Nd4j
 import org.nd4s.Implicits._
 import org.nd4j.linalg.indexing.{NDArrayIndex, INDArrayIndex}
 import org.nd4j.linalg.api.ndarray.INDArray
@@ -33,10 +35,11 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
   val shape = ncVariable.getShape.toList
   val fullname = ncVariable.getFullName
   val attributes = nc2.Attribute.makeMap(ncVariable.getAttributes).toMap
+  val missing = getAttributeValue( "missing_value", "NaN" ).toFloat
   val subsets = mutable.ListBuffer[PartitionedFragment]()
 
+  def getAttributeValue( key: String, default_value: String  ) =  attributes.get( key ) match { case Some( attr_val ) => attr_val.toString.split('=').last; case None => default_value }
   override def toString = "\nCDSVariable(%s) { description: '%s', shape: %s, dims: %s, }\n  --> Variable Attributes: %s".format(name, description, shape.mkString("[", " ", "]"), dims.mkString("[", ",", "]"), attributes.mkString("\n\t\t", "\n\t\t", "\n"))
-
   def normalize(sval: String): String = sval.stripPrefix("\"").stripSuffix("\"").toLowerCase
 
   def getBoundedCalDate(coordAxis1DTime: CoordinateAxis1DTime, caldate: CalendarDate, role: BoundsRole.Value, strict: Boolean = true): CalendarDate = {
@@ -134,14 +137,14 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
     val t0 = System.nanoTime
     val result = array.getElementType.toString match {
       case "float" =>
-        array.get1DJavaArray( array.getElementType ).asInstanceOf[Array[Float]].toNDArray
+        array.get1DJavaArray( array.getElementType ).asInstanceOf[Array[Float]].asNDArray(array.getShape:_*)
       case "int" =>
-        array.get1DJavaArray( array.getElementType ).asInstanceOf[Array[Int]].toNDArray
+        array.get1DJavaArray( array.getElementType ).asInstanceOf[Array[Int]].asNDArray(array.getShape:_*)
       case "double" =>
-        array.get1DJavaArray( array.getElementType ).asInstanceOf[Array[Double]].toNDArray
+        array.get1DJavaArray( array.getElementType ).asInstanceOf[Array[Double]].asNDArray(array.getShape:_*)
     }
     val t1 = System.nanoTime
-    logger.info( "Converted java array to INDArray, shape = %s, time = %.2f ms".format( array.getShape.toList.toString, (t1-t0)/1e6 ) )
+    logger.info( "Converted java array to INDArray, shape = %s, time = %.6f s".format( array.getShape.toList.toString, (t1-t0)/1.0E9 ) )
     result
   }
 
@@ -176,7 +179,7 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
       case None =>
         val array = ncVariable.read(roiSection)
         val ndArray: INDArray = getNDArray(array)
-        addSubset( roiSection, new Nd4jTensor(ndArray) )
+        addSubset( roiSection, new Nd4jTensor( ndArray, missing ) )
       case Some(subset) =>
         subset
     }

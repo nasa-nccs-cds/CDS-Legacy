@@ -36,7 +36,7 @@ object NetCDFReader {
     val ndArray: INDArray = NetCDFUtils.getNDArray( array )
     val t1 = System.nanoTime
     logger.info( " Variable = " + cdsVar.toString )
-    logger.info( "Read %s subset: %s, shape = %s, size = %d, time = %.4f s".format( varName, subsetted_ranges.toString, array.getShape.toList.toString, array.getSize, (t1-t0)/1e9 ) )
+    logger.info( "Read %s subset: %s, shape = %s, size = %d, time = %.4f s".format( varName, subsetted_ranges.toString, array.getShape.toList.toString, array.getSize, (t1-t0)/1.0E9 ) )
     ndArray
   }
 

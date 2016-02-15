@@ -15,7 +15,7 @@ ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) }
 
 // resolvers += "Unidata maven repository" at "http://artifacts.unidata.ucar.edu/content/repositories/unidata-releases"
 
-// resolvers ++= Seq( "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases" )
+resolvers ++= Seq( "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases" )
 
 libraryDependencies ++= Dependencies.scala
 
