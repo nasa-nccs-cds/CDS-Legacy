@@ -3,7 +3,7 @@ package nasa.nccs.cds2.cdm
 import nasa.nccs.cds2.cdm
 import nasa.nccs.cds2.utilities.cdsutils
 import nasa.nccs.esgf.process.DomainAxis
-import org.nd4j.linalg.api.ndarray.INDArray
+import org.nd4s.Implicits._
 import ucar.nc2.constants.AxisType
 import ucar.{ma2, nc2}
 import ucar.nc2.Variable

@@ -7,11 +7,12 @@ import java.util.Date
 import nasa.nccs.cds2.tensors.Nd4jTensor
 import nasa.nccs.cds2.utilities.cdsutils
 import nasa.nccs.esgf.utilities.numbers.GenericNumber
+import org.nd4s.Implicits._
 import org.nd4j.linalg.indexing.{NDArrayIndex, INDArrayIndex}
+import org.nd4j.linalg.api.ndarray.INDArray
 import ucar.nc2.time.{CalendarDate, CalendarDateRange}
 import nasa.nccs.esgf.process.DomainAxis
 import nasa.nccs.cdapi.tensors.AbstractTensor
-import org.nd4j.linalg.api.ndarray.INDArray
 import ucar.{ma2, nc2}
 import ucar.nc2.Variable
 import ucar.nc2.dataset.{CoordinateAxis, CoordinateAxis1D, CoordinateSystem, CoordinateAxis1DTime}
@@ -130,18 +131,14 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
   }
 
   def getNDArray( array: ucar.ma2.Array ): INDArray = {
-    import org.nd4j.linalg.factory.Nd4j
     val t0 = System.nanoTime
     val result = array.getElementType.toString match {
       case "float" =>
-        val java_array = array.get1DJavaArray( array.getElementType ).asInstanceOf[Array[Float]]
-        Nd4j.create( java_array, array.getShape )
+        array.get1DJavaArray( array.getElementType ).asInstanceOf[Array[Float]].toNDArray
       case "int" =>
-        val java_array = array.get1DJavaArray( array.getElementType ).asInstanceOf[Array[Int]]
-        Nd4j.create( java_array, array.getShape )
+        array.get1DJavaArray( array.getElementType ).asInstanceOf[Array[Int]].toNDArray
       case "double" =>
-        val java_array = array.get1DJavaArray( array.getElementType ).asInstanceOf[Array[Double]]
-        Nd4j.create( java_array, array.getShape )
+        array.get1DJavaArray( array.getElementType ).asInstanceOf[Array[Double]].toNDArray
     }
     val t1 = System.nanoTime
     logger.info( "Converted java array to INDArray, shape = %s, time = %.2f ms".format( array.getShape.toList.toString, (t1-t0)/1e6 ) )
