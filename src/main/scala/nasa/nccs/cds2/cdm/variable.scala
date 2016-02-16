@@ -4,7 +4,7 @@ import nasa.nccs.cdapi.kernels.DataFragment
 import nasa.nccs.cds2.cdm
 import nasa.nccs.cds2.loaders.Collection
 import java.util.Date
-import nasa.nccs.cds2.tensors.Nd4jTensor
+import nasa.nccs.cds2.tensors.{Nd4jMaskedTensor, Nd4jTensor}
 import nasa.nccs.cds2.utilities.cdsutils
 import nasa.nccs.esgf.utilities.numbers.GenericNumber
 import org.nd4j.linalg.cpu.NDArray
@@ -179,7 +179,7 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
       case None =>
         val array = ncVariable.read(roiSection)
         val ndArray: INDArray = getNDArray(array)
-        addSubset( roiSection, new Nd4jTensor( ndArray, missing ) )
+        addSubset( roiSection, new Nd4jMaskedTensor( ndArray, missing ) )
       case Some(subset) =>
         subset
     }

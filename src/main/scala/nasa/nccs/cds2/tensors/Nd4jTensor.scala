@@ -1,6 +1,6 @@
 package nasa.nccs.cds2.tensors
 
-import nasa.nccs.cdapi.tensors.AbstractTensor
+import nasa.nccs.cdapi.tensors.{MapOp, ReduceOp, AbstractTensor}
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4j.linalg.cpu.NDArray
 import org.nd4j.linalg.factory.Nd4j
@@ -10,7 +10,7 @@ import scala.language.implicitConversions
 /**
  * Wrapper around Nd4j INDArray.
  */
-class Nd4jTensor( val tensor: INDArray = new NDArray(), val invalid: Float = Float.NaN ) extends AbstractTensor {
+class Nd4jTensor( val tensor: INDArray = new NDArray() ) extends AbstractTensor {
   override type T = Nd4jTensor
   val name: String = "nd4j"
   val shape = tensor.shape
@@ -23,10 +23,18 @@ class Nd4jTensor( val tensor: INDArray = new NDArray(), val invalid: Float = Flo
     this(loadFunc())
   }
 
-  def mean() =  0.0.toFloat
-//    val numNonZero = tensor.count(p => p != invalid)
-//    if (numNonZero > 0) tensor.cumsum / numNonZero else invalid
-//  }
+  def reduce( op: ReduceOp[Nd4jTensor] ): Nd4jTensor = {
+    op.init
+    for( iC <- 0 until tensor.length ) op.insert( tensor.getFloat(iC) )
+    op.result
+  }
+
+  def map( op: MapOp[Nd4jTensor] ): Nd4jTensor = {
+    op.init
+    new Nd4jTensor( tensor.map(  op.dmap( _ ) ) )
+  }
+
+  def mean( dimension: Int* ) =  new Nd4jTensor( tensor.mean( dimension: _* ) )
 
   def zeros(shape: Int*) = new Nd4jTensor(Nd4j.create(shape: _*))
 

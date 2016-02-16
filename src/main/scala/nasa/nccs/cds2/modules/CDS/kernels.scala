@@ -15,40 +15,19 @@ class CDS extends KernelModule with KernelTools {
     val outputs = List(Port("result", "1"))
     override val description = "Average over Input Fragment"
 
-    class AveOp {
-      var value_sum  = 0.toFloat
-      var value_count = 0
-      def init = { value_sum  = 0.toFloat; value_count = 0 }
-      def addItem( value: Float ) = { value_sum += value; value_count += 1 }
-      def getResult = value_sum / value_count
-    }
-
-    def applyOp( input: INDArray, missing_value: Float, op: AveOp ): Float = {
-      op.init
-      for( iC <- 0 until input.length )  {
-        val v = input.getFloat(iC)
-        if( v != missing_value ) op.addItem(v)
-      }
-      op.getResult
-    }
-
     def getRow( input: INDArray, iR: Int ): INDArray = {
       val row_data = input.slice(iR,0)
       row_data.linearView
     }
 
     def execute(inputSubsets: List[DataFragment], run_args: Map[String, Any]): ExecutionResult = {
-      val input_array = getNdArray(inputSubsets)
+      val input_array = getNdArray( inputSubsets, 0 )
       val t0 = System.nanoTime
-      val mean_val =input_array._1.mean(0)
+      val mean_val = input_array.rawmean(0)
       val t1 = System.nanoTime
-      val result = mean_val.data.asFloat
-      logger.info("Kernel %s: Executed operation %s, time= %.4f s, result = %s ".format(name, operation, (t1-t0)/1.0E9, result.mkString("[", ",", "]")))
+      logger.info("Kernel %s: Executed operation %s, time= %.4f s, result = %s ".format(name, operation, (t1-t0)/1.0E9, mean_val.toString ))
       val t10 = System.nanoTime
-      val reshaped_input_array = input_array._1.reshape( input_array._1.shape()(0), input_array._1.shape()(3) )
-      val nRows = reshaped_input_array.shape()(1)
-      val op = new AveOp()
-      val mean_val_masked = ( 0 until nRows ).map( iR => applyOp( reshaped_input_array.slice(iR,0).ravel, input_array._2, op ) ) // getRow( reshaped_input_array, iR ) ) )
+      val mean_val_masked = input_array.mean(0)
       val t11 = System.nanoTime
       println("Mean_val_masked, time = %.4f s, result = %s".format( (t11-t10)/1.0E9, mean_val_masked.toString ) )
       new ExecutionResult(Array.emptyFloatArray)
