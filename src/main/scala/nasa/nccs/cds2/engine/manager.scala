@@ -48,7 +48,7 @@ class CDS2ExecutionManager {
   def execute( request: TaskRequest, run_args: Map[String,Any] ): xml.Elem = {
     logger.info("Execute { request: " + request.toString + ", runargs: " + run_args.toString + "}"  )
     val data_manager = new DataManager( request.domainMap )
-    for( data_container <- request.variableMap.values; if data_container.isSource )  data_manager.loadVariableData( data_container.uid, data_container.getSource )
+    for( data_container <- request.variableMap.values; if data_container.isSource )  data_manager.loadVariableData( data_container.uid, data_container.getSource, run_args )
     executeWorkflows( request.workflows, data_manager, run_args ).toXml
   }
 
@@ -62,7 +62,7 @@ class CDS2ExecutionManager {
 
   def operationExecution(operation: OperationContainer, data_manager: DataManager, run_args: Map[String, Any]): List[ExecutionResult] = {
     val inputSubsets: List[DataFragment] = operation.inputs.map(data_manager.getVariableData(_))
-    inputSubsets.map(inputSubset => { getKernel( operation.name.toLowerCase ).execute( inputSubsets, run_args) } )
+    inputSubsets.map(inputSubset => { getKernel( operation.name.toLowerCase ).execute( inputSubsets) } )
   }
 }
 
@@ -95,7 +95,7 @@ class DataManager( val domainMap: Map[String,DomainContainer] ) {
     }
   }
 
-  def loadVariableData(uid: String, data_source: DataSource): DataFragment = {
+  def loadVariableData(uid: String, data_source: DataSource, axisConf: Map[String,Any] ): DataFragment = {
     subsets.get(uid) match {
       case Some(subset) => subset
       case None =>
@@ -103,7 +103,7 @@ class DataManager( val domainMap: Map[String,DomainContainer] ) {
         domainMap.get(data_source.domain) match {
           case Some(domain_container) =>
             val variable = dataset.loadVariable(data_source.name)
-            val fragment = variable.loadRoi(domain_container.axes)
+            val fragment = variable.loadRoi( domain_container.axes, axisConf )
             subsets += uid -> fragment
             logger.info("Loaded variable %s (%s:%s) subset data, shape = %s ".format(uid, data_source.collection, data_source.name, fragment.shape.toString) )
             fragment
@@ -119,7 +119,7 @@ object SampleTaskRequests {
 
   def getAveTimeseries: TaskRequest = {
     import nasa.nccs.esgf.process.DomainAxis.Type._
-    val workflows = List[WorkflowContainer]( new WorkflowContainer( operations = List( new OperationContainer( identifier = "CDS.average~ivar#1",  name ="CDS.average", result = "ivar#1", inputs = List("v0"), optargs = Map("axis" -> "xy") )  ) ) )
+    val workflows = List[WorkflowContainer]( new WorkflowContainer( operations = List( new OperationContainer( identifier = "CDS.average~ivar#1",  name ="CDS.average", result = "ivar#1", inputs = List("v0"), optargs = Map("axis" -> "t") )  ) ) )
     val variableMap = Map[String,DataContainer]( "v0" -> new DataContainer( uid="v0", source = Some(new DataSource( name = "hur", collection = "merra/mon/atmos", domain = "d0" ) ) ) )
     val domainMap = Map[String,DomainContainer]( "d0" -> new DomainContainer( name = "d0", axes = cdsutils.flatlist( DomainAxis(Lev,1,1), DomainAxis(Lat,100,100), DomainAxis(Lon,100,100) ) ) )
     new TaskRequest( "CDS.average", variableMap, domainMap, workflows )
@@ -127,7 +127,7 @@ object SampleTaskRequests {
 
   def getTimeAveSlice: TaskRequest = {
     import nasa.nccs.esgf.process.DomainAxis.Type._
-    val workflows = List[WorkflowContainer]( new WorkflowContainer( operations = List( new OperationContainer( identifier = "CDS.average~ivar#1",  name ="CDS.average", result = "ivar#1", inputs = List("v0"), optargs = Map("axis" -> "xy") )  ) ) )
+    val workflows = List[WorkflowContainer]( new WorkflowContainer( operations = List( new OperationContainer( identifier = "CDS.average~ivar#1",  name ="CDS.average", result = "ivar#1", inputs = List("v0"), optargs = Map("axis" -> "t") )  ) ) )
     val variableMap = Map[String,DataContainer]( "v0" -> new DataContainer( uid="v0", source = Some(new DataSource( name = "hur", collection = "merra/mon/atmos", domain = "d0" ) ) ) )
     val domainMap = Map[String,DomainContainer]( "d0" -> new DomainContainer( name = "d0", axes = cdsutils.flatlist( DomainAxis(Lev,1,1), DomainAxis(Lat,100,100) ) ) )
     new TaskRequest( "CDS.average", variableMap, domainMap, workflows )

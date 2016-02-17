@@ -15,13 +15,9 @@ class CDS extends KernelModule with KernelTools {
     val outputs = List(Port("result", "1"))
     override val description = "Average over Input Fragment"
 
-    def getRow( input: INDArray, iR: Int ): INDArray = {
-      val row_data = input.slice(iR,0)
-      row_data.linearView
-    }
-
-    def execute(inputSubsets: List[DataFragment], run_args: Map[String, Any]): ExecutionResult = {
+    def execute(inputSubsets: List[DataFragment] ): ExecutionResult = {
       val input_array = getNdArray( inputSubsets, 0 )
+      val axes = input_array(0)
       val t0 = System.nanoTime
       val mean_val = input_array.rawmean(0)
       val t1 = System.nanoTime

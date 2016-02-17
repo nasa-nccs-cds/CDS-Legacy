@@ -10,29 +10,20 @@ import scala.language.implicitConversions
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 
-class Nd4jMaskedTensor(val tensor: INDArray = new NDArray(), val invalid: Float = Float.NaN ) extends AbstractTensor {
+class Nd4jMaskedTensor( ndarray: INDArray = new NDArray(), val invalid: Float = Float.NaN ) extends BaseNd4jTensor( ndarray ) {
   override type T = Nd4jMaskedTensor
-  val name: String = "nd4jm"
-  val shape = tensor.shape
+  override val name: String = "Nd4jMaskedTensor"
 
-  override def toString = {
-    val tstr = tensor.data().toString
-    "Nd4jMaskedTensor[%s]: %s".format( shape.mkString(","), tstr )
+  def exec( op: TensorOp, dimensions: Int* ): Nd4jMaskedTensor = {
+    val slices = execOp( op, dimensions:_* )
+    new Nd4jMaskedTensor( slices, invalid )
   }
 
   def subset( index: Int, dimensions: Int*  ): Nd4jMaskedTensor = {
     new Nd4jMaskedTensor( tensor.tensorAlongDimension(index, dimensions:_*), invalid )
   }
 
-  def exec( op: TensorOp, dimensions: Int* ): Nd4jMaskedTensor = {
-    val filtered_shape: IndexedSeq[Int] = (0 until shape.length).flatMap(x => if (dimensions.exists(_==x)) None else Some(shape(x)) )
-    val slices =  Nd4j.concat( 0, (0 until filtered_shape.product ).map( iS => Nd4j.create( subset(iS,dimensions:_*).applyOp(op) ) ): _* )
-    val new_shape = if (op.length == 1) filtered_shape else  filtered_shape:+op.length
-    slices.setShape(new_shape:_*); slices.cleanup()
-    new Nd4jMaskedTensor( slices, invalid )
-  }
-
-  def applyOp( op: TensorOp ): Array[Float] = {
+  override def applyOp( op: TensorOp ): Array[Float] = {
     op.init
     for( iC <- 0 until tensor.length )  {
       val v = tensor.getFloat(iC)
@@ -89,8 +80,8 @@ class Nd4jMaskedTensor(val tensor: INDArray = new NDArray(), val invalid: Float 
 
   def apply(ranges: (Int, Int)*) = {
     val rangeMap = ranges.map(p => TupleRange(p))
-    val IndArray = tensor(rangeMap: _*)
-    new Nd4jMaskedTensor(IndArray)
+    val indArray = tensor(rangeMap: _*)
+    new Nd4jMaskedTensor(indArray,invalid)
   }
 
   def apply(indexes: Int*) = tensor.get(indexes.toArray).toFloat

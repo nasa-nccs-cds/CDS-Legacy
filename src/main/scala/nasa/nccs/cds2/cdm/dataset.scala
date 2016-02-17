@@ -49,6 +49,8 @@ class CDSDataset( val name: String, val uri: String, val ncDataset: NetcdfDatase
   val coordAxes: List[CoordinateAxis] = ncDataset.getCoordinateAxes.toList
   val variables = mutable.HashMap.empty[String,cdm.CDSVariable]
 
+  def getCoordinateAxes: List[CoordinateAxis] = ncDataset.getCoordinateAxes.toList
+
   def loadVariable( varName: String ): cdm.CDSVariable = {
     variables.get(varName) match {
       case None =>
@@ -88,3 +90,5 @@ class CDSDataset( val name: String, val uri: String, val ncDataset: NetcdfDatase
     }
   }
 }
+
+// var.findDimensionIndex(java.lang.String name)

@@ -148,7 +148,7 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
     result
   }
 
-  def loadRoiPartition(roi: List[DomainAxis], partIndex: Int, partAxis: Char, nPart: Int): PartitionedFragment = {
+  def loadRoiPartition(roi: List[DomainAxis], partIndex: Int, partAxis: Char, nPart: Int, axisConf: Map[String,Any] ): PartitionedFragment = {
     dataset.getCoordinateAxis(partAxis) match {
       case Some(partitionAxis) =>
         val partAxisIndex = ncVariable.findDimensionIndex(partitionAxis.getShortName)
@@ -161,7 +161,8 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
               case None =>
                 val array = ncVariable.read(partSection)
                 val ndArray: INDArray = getNDArray(array)
-                addSubset( roiSection, new Nd4jTensor(ndArray) )
+                val axisSpecs = getAxisSpecs( axisConf )
+                addSubset( roiSection, new Nd4jTensor(ndArray), axisSpecs )
               case Some(subset) =>
                 subset
             }
@@ -173,20 +174,36 @@ class CDSVariable(val name: String, val dataset: CDSDataset, val ncVariable: nc2
     }
   }
 
-  def loadRoi(roi: List[DomainAxis]): PartitionedFragment = {
+  def getAxisIndex( axisClass: Char ): Option[Int] = {
+    def missing = { logger.warn( "Axis of type %c does not exist in variable %s".format( axisClass, fullname ) ); None }
+    def getOption( ival: Int ) = ival match { case -1 => missing; case x => Option(x) }
+    val coord_axes = dataset.getCoordinateAxes
+    dataset.getCoordinateAxis( axisClass ) match {
+      case Some( coord_axis ) => getOption( coord_axes.indexOf( coord_axis ) )
+      case None => missing
+    }
+  }
+
+  def getAxisSpecs( axisConf: Map[String,Any] ): AxisSpecs = {
+    val axis_ids = axisConf.getOrElse("axes", "").toString.split(",").flatMap( sval => getAxisIndex( sval(0) ) )
+    new AxisSpecs( axis_ids )
+  }
+
+  def loadRoi( roi: List[DomainAxis], axisConf: Map[String,Any] ): PartitionedFragment = {
     val roiSection: ma2.Section = getSubSection(roi)
     findSubset(roiSection) match {
       case None =>
         val array = ncVariable.read(roiSection)
         val ndArray: INDArray = getNDArray(array)
-        addSubset( roiSection, new Nd4jMaskedTensor( ndArray, missing ) )
+        val axisSpecs = getAxisSpecs( axisConf )
+        addSubset( roiSection, new Nd4jMaskedTensor( ndArray, missing ), axisSpecs )
       case Some(subset) =>
         subset
     }
   }
 
-  def addSubset( roiSection: ma2.Section, array: AbstractTensor ): PartitionedFragment = {
-    val subset = new PartitionedFragment( array, roiSection )
+  def addSubset( roiSection: ma2.Section, array: AbstractTensor, axisSpecs: AxisSpecs ): PartitionedFragment = {
+    val subset = new PartitionedFragment( array, roiSection, axisSpecs )
     subsets += subset
     subset
   }
@@ -204,10 +221,13 @@ object PartitionedFragment {
   def sectionToIndices( section: ma2.Section ): List[(Int,Int)] = section.getRanges.map( range => ( range.first, range.last ) ).toList
 }
 
-class PartitionedFragment( array: AbstractTensor, roiSection: ma2.Section, metaDataVar: (String, String)*  ) extends DataFragment( array, metaDataVar:_* ) {
-  val LOG = org.slf4j.LoggerFactory.getLogger(this.getClass)
+class AxisSpecs( val axis_ids: Array[Int] ) {
 
-  def this() = this( new Nd4jTensor(), new ma2.Section() )
+  def getAxes: Array[Int] = axis_ids
+}
+
+class PartitionedFragment( array: AbstractTensor, val roiSection: ma2.Section, val axisSpecs: AxisSpecs, metaDataVar: (String, String)*  ) extends DataFragment( array, metaDataVar:_* ) {
+  val LOG = org.slf4j.LoggerFactory.getLogger(this.getClass)
 
   override def toString = { "PartitionedFragment: shape = %s, section = %s".format( array.shape.toString, roiSection.toString ) }
 
@@ -216,7 +236,7 @@ class PartitionedFragment( array: AbstractTensor, roiSection: ma2.Section, metaD
     else {
       val relativeSection = newSection.shiftOrigin( roiSection )
       val newDataArray = array( PartitionedFragment.sectionToIndices(relativeSection):_* )
-      new PartitionedFragment( if(copy) array.dup() else newDataArray, newSection )
+      new PartitionedFragment( if(copy) array.dup() else newDataArray, newSection, axisSpecs )
     }
   }
   def size: Long = roiSection.computeSize

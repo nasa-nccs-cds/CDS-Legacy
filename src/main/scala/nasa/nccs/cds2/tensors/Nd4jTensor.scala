@@ -1,37 +1,43 @@
 package nasa.nccs.cds2.tensors
 
-import nasa.nccs.cdapi.tensors.{MapOp, ReduceOp, AbstractTensor}
+import nasa.nccs.cdapi.tensors.{TensorOp, AbstractTensor}
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4j.linalg.cpu.NDArray
 import org.nd4j.linalg.factory.Nd4j
 import org.nd4s.Implicits._
+import scala.collection.immutable.IndexedSeq
 import scala.language.implicitConversions
 
-/**
- * Wrapper around Nd4j INDArray.
- */
 class Nd4jTensor( val tensor: INDArray = new NDArray() ) extends AbstractTensor {
   override type T = Nd4jTensor
-  val name: String = "nd4j"
+  val name: String = "Nd4jTensor"
   val shape = tensor.shape
 
-  def this(shapePair: (Array[Float], Array[Int])) {
-    this(Nd4j.create(shapePair._1, shapePair._2))
+  override def toString = {
+    "%s[%s]: %s".format( name, shape.mkString(","), tensor.data().toString )
   }
 
-  def this(loadFunc: () => (Array[Float], Array[Int])) {
-    this(loadFunc())
+  def subset( index: Int, dimensions: Int*  ): Nd4jTensor = {
+    new Nd4jTensor( tensor.tensorAlongDimension(index, dimensions:_*) )
   }
 
-  def reduce( op: ReduceOp[Nd4jTensor] ): Nd4jTensor = {
+  def execOp( op: TensorOp, dimensions: Int* ): INDArray = {
+    val filtered_shape: IndexedSeq[Int] = (0 until shape.length).flatMap(x => if (dimensions.exists(_==x)) None else Some(shape(x)) )
+    val slices =  Nd4j.concat( 0, (0 until filtered_shape.product ).map( iS => Nd4j.create( subset(iS,dimensions:_*).applyOp(op) ) ): _* )
+    val new_shape = if (op.length == 1) filtered_shape else  filtered_shape:+op.length
+    slices.setShape(new_shape:_*); slices.cleanup()
+    slices
+  }
+
+  def exec( op: TensorOp, dimensions: Int* ): Nd4jTensor = {
+    val slices = execOp( op, dimensions:_* )
+    new Nd4jTensor( slices )
+  }
+
+  def applyOp( op: TensorOp ): Array[Float] = {
     op.init
-    for( iC <- 0 until tensor.length ) op.insert( tensor.getFloat(iC) )
+    for( iC <- 0 until tensor.length )  op.insert(tensor.getFloat(iC))
     op.result
-  }
-
-  def map( op: MapOp[Nd4jTensor] ): Nd4jTensor = {
-    op.init
-    new Nd4jTensor( tensor.map(  op.dmap( _ ) ) )
   }
 
   def mean( dimension: Int* ) =  new Nd4jTensor( tensor.mean( dimension: _* ) )
@@ -95,8 +101,6 @@ class Nd4jTensor( val tensor: INDArray = new NDArray() ) extends AbstractTensor 
   def cumsum = tensor.sumNumber.asInstanceOf[Float]
 
   def dup = new Nd4jTensor(tensor.dup)
-
-  override def toString = tensor.toString
 
   def isZero = tensor.mul(tensor).sumNumber.asInstanceOf[Float] <= 1E-9
   
