@@ -1,4 +1,6 @@
 package nasa.nccs.cds2.modules.CDS
+
+import nasa.nccs.cdapi.cdm.PartitionedFragment
 import nasa.nccs.cdapi.kernels.{ Kernel, Port, KernelModule, ExecutionResult, DataFragment }
 import nasa.nccs.cds2.kernels.KernelTools
 import org.nd4j.linalg.api.ndarray.INDArray
@@ -15,9 +17,8 @@ class CDS extends KernelModule with KernelTools {
     val outputs = List(Port("result", "1"))
     override val description = "Average over Input Fragment"
 
-    def execute(inputSubsets: List[DataFragment] ): ExecutionResult = {
-      val input_array = getNdArray( inputSubsets, 0 )
-      val axes = input_array(0)
+    def execute(inputSubsets: List[PartitionedFragment] ): ExecutionResult = {
+      val input_array = inputSubsets(0).data
       val t0 = System.nanoTime
       val mean_val = input_array.rawmean(0)
       val t1 = System.nanoTime

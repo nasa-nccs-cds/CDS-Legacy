@@ -61,7 +61,7 @@ class CDS2ExecutionManager {
   }
 
   def operationExecution(operation: OperationContainer, data_manager: DataManager, run_args: Map[String, Any]): List[ExecutionResult] = {
-    val inputSubsets: List[DataFragment] = operation.inputs.map(data_manager.getVariableData(_))
+    val inputSubsets: List[PartitionedFragment] = operation.inputs.map(data_manager.getVariableData(_))
     inputSubsets.map(inputSubset => { getKernel( operation.name.toLowerCase ).execute( inputSubsets) } )
   }
 }
@@ -69,7 +69,7 @@ class CDS2ExecutionManager {
 class DataManager( val domainMap: Map[String,DomainContainer] ) {
   val logger = org.slf4j.LoggerFactory.getLogger("nasa.nccs.cds2.engine.DataManager")
   var datasets = mutable.Map[String,cdm.CDSDataset]()
-  var subsets = mutable.Map[String,DataFragment]()
+  var subsets = mutable.Map[String,PartitionedFragment]()
 
   def getDataset( data_source: DataSource ): cdm.CDSDataset = {
     val datasetName = data_source.collection.toLowerCase
@@ -88,7 +88,7 @@ class DataManager( val domainMap: Map[String,DomainContainer] ) {
     }
   }
 
-  def getVariableData(uid: String): DataFragment = {
+  def getVariableData(uid: String): PartitionedFragment = {
     subsets.get(uid) match {
       case Some(subset) => subset
       case None => throw new Exception("Can't find subset Data for Variable $uid")
