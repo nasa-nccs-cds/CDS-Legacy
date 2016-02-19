@@ -1,7 +1,7 @@
 package nasa.nccs.cds2.engine
 
-import nasa.nccs.cds2.cdm
-import nasa.nccs.cds2.cdm.{PartitionedFragment, CDSVariable}
+import nasa.nccs.cdapi.cdm
+import nasa.nccs.cdapi.cdm.{PartitionedFragment, CDSVariable}
 import nasa.nccs.cds2.loaders.Collections
 import nasa.nccs.esgf.process._
 import nasa.nccs.esgf.engine.PluginExecutionManager
@@ -9,7 +9,7 @@ import org.apache.spark.rdd.RDD
 import org.nd4j.linalg.factory.Nd4j
 import org.slf4j.LoggerFactory
 import scala.collection.mutable
-import nasa.nccs.cds2.utilities.cdsutils
+import nasa.nccs.utilities.cdsutils
 import nasa.nccs.cds2.kernels.kernelManager
 import nasa.nccs.cdapi.kernels.{ Kernel, KernelModule, ExecutionResult, ExecutionResults, DataFragment }
 

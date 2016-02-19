@@ -1,6 +1,6 @@
 package nasa.nccs.cds2.engine.spark
 
-import nasa.nccs.cds2.cdm.{PartitionedFragment, CDSVariable}
+import nasa.nccs.cdapi.cdm.{PartitionedFragment, CDSVariable}
 import nasa.nccs.esgf.process.DomainAxis
 import org.slf4j.LoggerFactory
 import org.apache.spark.rdd.RDD

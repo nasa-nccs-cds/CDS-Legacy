@@ -1,7 +1,7 @@
 package nasa.nccs.cds2.kernels
 import java.util.jar.JarFile
 import nasa.nccs.cdapi.kernels.KernelModule
-import nasa.nccs.cds2.utilities.cdsutils
+import nasa.nccs.utilities.cdsutils
 import collection.mutable
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._

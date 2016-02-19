@@ -1,16 +1,5 @@
 package nasa.nccs.cds2.loaders
-
-object Collection { 
-  def apply( ctype: String, url: String, vars: List[String] = List() ) = { new Collection(ctype,url,vars) }
-}
-class Collection( val ctype: String, val url: String, val vars: List[String] = List() ) {
-  def getUri( varName: String = "" ) = {
-    ctype match {
-      case "dods" => s"$url/$varName.ncml"
-      case _ => throw new Exception( s"Unrecognized collection type: $ctype")
-    }
-  }
-}
+import nasa.nccs.cdapi.cdm.Collection
 
 object AxisNames {
   def apply( x: String = "", y: String = "", z: String = "", t: String = "" ): Option[AxisNames] = {

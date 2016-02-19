@@ -1,8 +1,8 @@
 package nasa.nccs.cds2.engine.spark
 
 import nasa.nccs.cdapi.kernels.DataFragment
-import nasa.nccs.cds2.cdm
-import nasa.nccs.cds2.cdm.PartitionedFragment
+import nasa.nccs.cdapi.cdm
+import nasa.nccs.cdapi.cdm.PartitionedFragment
 import nasa.nccs.cds2.engine.{SampleTaskRequests, DataManager, CDS2ExecutionManager}
 import nasa.nccs.esgf.process.{DataSource, DomainContainer, TaskRequest}
 import org.apache.spark.rdd.RDD

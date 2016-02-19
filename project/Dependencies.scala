@@ -26,7 +26,6 @@ object Library {
   val netcdf4        = "edu.ucar"           % "netcdf4"         % "4.6.0"
   val nd4s           = "org.nd4j"           % "nd4s_2.11"       % "0.4-rc3.8"
   val nd4j           =  "org.nd4j"          % "nd4j-x86"        % "0.4-rc3.8"
-  val nd4jApi        = "org.nd4j"           % "nd4j-api"        % "0.4-rc3.8"
   val opendap        = "edu.ucar"           % "opendap"         % "2.2.2"
   val httpservices   = "edu.ucar"           %  "httpservices"   % "4.6.0"
   val udunits        = "edu.ucar"           %  "udunits"        % "4.6.0"
