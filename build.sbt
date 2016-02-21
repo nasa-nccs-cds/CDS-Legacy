@@ -12,7 +12,7 @@ lazy val root = project in file(".")
 
 //  ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) }
 
-// resolvers += "Unidata maven repository" at "http://artifacts.unidata.ucar.edu/content/repositories/unidata-releases"
+resolvers += "Unidata maven repository" at "http://artifacts.unidata.ucar.edu/content/repositories/unidata-releases"
 
 resolvers ++= Seq( "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases" )
 
@@ -23,6 +23,7 @@ libraryDependencies ++= Dependencies.ndarray
 libraryDependencies ++= Dependencies.kernels
 
 libraryDependencies ++= Dependencies.spark
+
 
 
 

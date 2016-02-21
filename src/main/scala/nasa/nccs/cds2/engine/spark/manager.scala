@@ -4,7 +4,7 @@ import nasa.nccs.cdapi.kernels.DataFragment
 import nasa.nccs.cdapi.cdm
 import nasa.nccs.cdapi.cdm.PartitionedFragment
 import nasa.nccs.cds2.engine.{SampleTaskRequests, DataManager, CDS2ExecutionManager}
-import nasa.nccs.esgf.process.{DataSource, DomainContainer, TaskRequest}
+import nasa.nccs.esgf.process._
 import org.apache.spark.rdd.RDD
 
 import scala.collection.mutable
@@ -12,7 +12,10 @@ import scala.collection.mutable
 class RDDataManager( val cdsContext: CDSparkContext, domainMap: Map[String,DomainContainer] ) extends DataManager(domainMap) {
   var prdds = mutable.Map[String, RDD[PartitionedFragment]]()
 
-  def loadRDData(uid: String, data_source: DataSource, nPart: Int, axisConf: Map[String,Any] ):  RDD[PartitionedFragment] = {
+  def loadRDData( data_container: DataContainer, nPart: Int ):  RDD[PartitionedFragment] = {
+    val uid: String = data_container.uid
+    val data_source: DataSource = data_container.getSource
+    val axisConf: List[OperationSpecs] = data_container.getOpSpecs
     prdds.get(uid) match {
       case Some(prdd) => prdd
       case None =>
@@ -20,8 +23,8 @@ class RDDataManager( val cdsContext: CDSparkContext, domainMap: Map[String,Domai
         domainMap.get(data_source.domain) match {
           case Some(domain_container) =>
             val variable = dataset.loadVariable(data_source.name)
-            val partAxis = 't'   // TODO: Compute this
-            val pRDD = cdsContext.makeFragmentRDD( variable, domain_container.axes, partAxis: Char, nPart, axisConf )
+            val partAxis = "t"   // TODO: Compute this
+            val pRDD = cdsContext.makeFragmentRDD( variable, domain_container.axes, partAxis, nPart, axisConf )
             prdds += uid -> pRDD
             logger.info("Loaded variable %s (%s:%s) subset data, shape = %s ".format(uid, data_source.collection, data_source.name, "") ) // pRDD.shape.toString) )
             pRDD
@@ -38,7 +41,7 @@ class CDSparkExecutionManager( val cdsContext: CDSparkContext ) extends CDS2Exec
     logger.info("Execute { request: " + request.toString + ", runargs: " + run_args.toString + "}"  )
     val data_manager = new RDDataManager( cdsContext, request.domainMap )
     val nPart = 4  // TODO: Compute this
-    for( data_container <- request.variableMap.values; if data_container.isSource )  data_manager.loadRDData( data_container.uid, data_container.getSource, nPart, run_args )
+    for( data_container <- request.variableMap.values; if data_container.isSource )  data_manager.loadRDData( data_container, nPart )
     executeWorkflows( request.workflows, data_manager, run_args ).toXml
   }
 }

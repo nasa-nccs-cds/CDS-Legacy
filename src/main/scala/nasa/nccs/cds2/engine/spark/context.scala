@@ -1,7 +1,7 @@
 package nasa.nccs.cds2.engine.spark
 
 import nasa.nccs.cdapi.cdm.{PartitionedFragment, CDSVariable}
-import nasa.nccs.esgf.process.DomainAxis
+import nasa.nccs.esgf.process.{OperationSpecs, DomainAxis}
 import org.slf4j.LoggerFactory
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
@@ -26,7 +26,7 @@ class CDSparkContext(val conf: SparkConf) {
 
   def getConf: SparkConf = sparkContext.getConf
 
-  def makeFragmentRDD( variable: CDSVariable, roi: List[DomainAxis], partAxis: Char, nPart: Int, axisConf: Map[String,Any] ): RDD[PartitionedFragment] = {
+  def makeFragmentRDD( variable: CDSVariable, roi: List[DomainAxis], partAxis: String, nPart: Int, axisConf: List[OperationSpecs] ): RDD[PartitionedFragment] = {
     val indexRDD: RDD[Int] = sparkContext.makeRDD( 0 to nPart-1, nPart )
     indexRDD.map( variable.loadRoiPartition( roi, _, partAxis, nPart, axisConf ) )
   }

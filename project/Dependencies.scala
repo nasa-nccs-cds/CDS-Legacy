@@ -21,9 +21,10 @@ object Library {
   val scalaxml       = "org.scala-lang.modules" %% "scala-xml"  % "1.0.3"
   val scalaparser    = "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.3"
 
-  val cdm            = "edu.ucar"           % "cdm"             % "4.6.0"
-  val clcommon       = "edu.ucar"           % "clcommon"        % "4.6.0"
-  val netcdf4        = "edu.ucar"           % "netcdf4"         % "4.6.0"
+  val cdm            = "edu.ucar"           % "cdm"             % "4.4.0"
+  val clcommon       = "edu.ucar"           % "clcommon"        % "4.4.0"
+  val netcdf4        = "edu.ucar"           % "netcdf4"         % "4.4.0"
+  val netcdfAll      = "edu.ucar"           % "netcdfAll"       % "4.6.4"
   val nd4s           = "org.nd4j"           % "nd4s_2.11"       % "0.4-rc3.8"
   val nd4j           =  "org.nd4j"          % "nd4j-x86"        % "0.4-rc3.8"
   val opendap        = "edu.ucar"           % "opendap"         % "2.2.2"
@@ -34,6 +35,7 @@ object Library {
   val guava          = "com.google.guava"   % "guava"           % "18.0"
   val breeze         = "org.scalanlp"      %% "breeze"          % "0.12"
   val kernelmod      = "nasa.nccs"         %% "kermodbase"      % "1.0-SNAPSHOT"
+  val cdapi          = "nasa.nccs"         %% "CDAPI"           % "1.0-SNAPSHOT"
 }
 
 object Dependencies {
@@ -52,9 +54,7 @@ object Dependencies {
 
   val ndarray = Seq( nd4s, nd4j, breeze )
 
-  val netcdf = Seq( cdm, clcommon, netcdf4, opendap, httpservices, udunits )  // Currently unmanaged
-
-  val kernels = Seq( kernelmod )
+  val kernels = Seq( kernelmod, cdapi )
 }
 
 
