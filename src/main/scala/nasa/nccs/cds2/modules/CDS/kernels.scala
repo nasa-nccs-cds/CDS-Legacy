@@ -19,15 +19,17 @@ class CDS extends KernelModule with KernelTools {
 
     def execute(inputSubsets: List[PartitionedFragment] ): ExecutionResult = {
       val input_array = inputSubsets(0).data
+      val axisSpecs = inputSubsets(0).axisSpecs
+      val axes = axisSpecs.getAxes
       val t0 = System.nanoTime
-      val mean_val = input_array.rawmean(0)
+      val mean_val = input_array.rawmean( axes:_* )
       val t1 = System.nanoTime
       logger.info("Kernel %s: Executed operation %s, time= %.4f s, result = %s ".format(name, operation, (t1-t0)/1.0E9, mean_val.toString ))
       val t10 = System.nanoTime
-      val mean_val_masked = input_array.mean(0)
+      val mean_val_masked = input_array.mean( axes:_* )
       val t11 = System.nanoTime
       println("Mean_val_masked, time = %.4f s, result = %s".format( (t11-t10)/1.0E9, mean_val_masked.toString ) )
-      new ExecutionResult(Array.emptyFloatArray)
+      new ExecutionResult( mean_val_masked.data )
     }
   }
 }

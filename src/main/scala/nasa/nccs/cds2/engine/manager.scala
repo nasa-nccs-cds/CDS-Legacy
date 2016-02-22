@@ -128,20 +128,20 @@ object SampleTaskRequests {
     new TaskRequest( "CDS.average", variableMap, domainMap, workflows )
   }
 
-  def getTimeAveSlice1: TaskRequest = {
-    import nasa.nccs.esgf.process.DomainAxis.Type._
-    val workflows = List[WorkflowContainer]( new WorkflowContainer( operations = List( new OperationContainer( identifier = "CDS.average~ivar#1",  name ="CDS.average", result = "ivar#1", inputs = List("v0"), optargs = Map("axis" -> "t") )  ) ) )
-    val variableMap = Map[String,DataContainer]( "v0" -> new DataContainer( uid="v0", source = Some(new DataSource( name = "hur", collection = "merra/mon/atmos", domain = "d0" ) ) ) )
-    val domainMap = Map[String,DomainContainer]( "d0" -> new DomainContainer( name = "d0", axes = cdsutils.flatlist( DomainAxis(Lev,1,1), DomainAxis(Lat,100,100) ) ) )
-    new TaskRequest( "CDS.average", variableMap, domainMap, workflows )
-  }
-
   def getTimeAveSlice: TaskRequest = {
     val dataInputs = Map(
       "domain" -> List( Map("name" -> "d0", "lat" -> Map("start" -> 10, "end" -> 10, "system" -> "values"), "lon" -> Map("start" -> 10, "end" -> 10, "system" -> "values"), "lev" -> Map("start" -> 8, "end" -> 8, "system" -> "indices"))),
       "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "hur:v0", "domain" -> "d0")),
-      "operation" -> List(Map("unparsed" -> "(v0,axis:t)")))
+      "operation" -> List(Map("unparsed" -> "( v0, axes: t )")))
       TaskRequest( "CDS.average", dataInputs )
+  }
+
+  def getSpatialAve: TaskRequest = {
+    val dataInputs = Map(
+      "domain" -> List( Map("name" -> "d0", "lev" -> Map("start" -> 8, "end" -> 8, "system" -> "indices"))),
+      "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "hur:v0", "domain" -> "d0")),
+      "operation" -> List(Map("unparsed" -> "( v0, axes: xy, y.weights: inverse_cosine )")))
+    TaskRequest( "CDS.average", dataInputs )
   }
 
   def getAveArray: TaskRequest = {
@@ -162,12 +162,19 @@ object SampleTaskRequests {
 }
 
 object executionTest extends App {
-  val request = SampleTaskRequests.getTimeAveSlice
+  val request = SampleTaskRequests.getSpatialAve
   val run_args = Map[String,Any]()
   val cds2ExecutionManager = new CDS2ExecutionManager()
   val result = cds2ExecutionManager.execute( request, run_args )
   println( result.toString )
 }
+
+object trimTest extends App {
+  val axes = "c,,,"
+  val r = axes.split(",").map(_.head).toList
+  println( r )
+}
+
 
 
 //  TaskRequest: name= CWT.average, variableMap= Map(v0 -> DataContainer { id = hur:v0, dset = merra/mon/atmos, domain = d0 }, ivar#1 -> OperationContainer { id = ~ivar#1,  name = , result = ivar#1, inputs = List(v0), optargs = Map(axis -> xy) }), domainMap= Map(d0 -> DomainContainer { id = d0, axes = List(DomainAxis { id = lev, start = 0, end = 1, system = "indices", bounds =  }) })
