@@ -1,7 +1,7 @@
 package nasa.nccs.cds2.engine
 
 import nasa.nccs.cdapi.cdm
-import nasa.nccs.cdapi.cdm.{PartitionedFragment, CDSVariable}
+import nasa.nccs.cdapi.cdm.{BinPartitioner, PartitionedFragment, CDSVariable}
 import nasa.nccs.cds2.loaders.Collections
 import nasa.nccs.esgf.process._
 import nasa.nccs.esgf.engine.PluginExecutionManager
@@ -58,12 +58,13 @@ class CDS2ExecutionManager {
   def listProcesses(): xml.Elem = kernelManager.toXml
 
   def executeWorkflows( workflows: List[WorkflowContainer], data_manager: DataManager, run_args: Map[String,Any] ): ExecutionResults = {
-    new ExecutionResults( workflows.map( workflow => workflow.operations.map( operation => operationExecution( operation, data_manager,  run_args ) ).flatten ).flatten )
+    new ExecutionResults( workflows.map( workflow => workflow.operations.map( operation => operationExecution( operation, data_manager,  run_args ) ) ).flatten )
   }
 
-  def operationExecution(operation: OperationContainer, data_manager: DataManager, run_args: Map[String, Any]): List[ExecutionResult] = {
+  def operationExecution(operation: OperationContainer, data_manager: DataManager, run_args: Map[String, Any]): ExecutionResult = {
     val inputSubsets: List[PartitionedFragment] = operation.inputs.map(data_manager.getVariableData(_))
-    inputSubsets.map(inputSubset => { getKernel( operation.name.toLowerCase ).execute( inputSubsets) } )
+    val binPartitioner = data_manager.getBinPartitioner( operation )
+    getKernel( operation.name.toLowerCase ).execute( inputSubsets, operation.optargs )
   }
 }
 
@@ -71,6 +72,19 @@ class DataManager( val domainMap: Map[String,DomainContainer] ) {
   val logger = org.slf4j.LoggerFactory.getLogger("nasa.nccs.cds2.engine.DataManager")
   var datasets = mutable.Map[String,cdm.CDSDataset]()
   var subsets = mutable.Map[String,PartitionedFragment]()
+  var variables = mutable.Map[String,CDSVariable]()
+
+  def getBinPartitioner( operation: OperationContainer ): Option[BinPartitioner] = {
+    val uid = operation.inputs(0)
+    operation.optargs.get("bins") match {
+      case None => None
+      case Some(binSpec) =>
+        variables.get(uid) match {
+          case None => throw new Exception( "DataManager can't find variable %s in getBinScaffold, variables = [%s]".format(uid,variables.keys.mkString(",")))
+          case Some(variable) => Some( variable.getBinPartitioner( binSpec.split('|') ) )
+        }
+    }
+  }
 
   def getDataset( data_source: DataSource ): cdm.CDSDataset = {
     val datasetName = data_source.collection.toLowerCase
@@ -108,6 +122,7 @@ class DataManager( val domainMap: Map[String,DomainContainer] ) {
             val variable = dataset.loadVariable(data_source.name)
             val fragment = variable.loadRoi( domain_container.axes, data_container.getOpSpecs )
             subsets += uid -> fragment
+            variables += uid -> variable
             logger.info("Loaded variable %s (%s:%s) subset data, shape = %s ".format(uid, data_source.collection, data_source.name, fragment.shape.toString) )
             fragment
           case None =>
@@ -134,6 +149,14 @@ object SampleTaskRequests {
       "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "hur:v0", "domain" -> "d0")),
       "operation" -> List(Map("unparsed" -> "( v0, axes: t )")))
       TaskRequest( "CDS.average", dataInputs )
+  }
+
+  def getYearlyCycleSlice: TaskRequest = {
+    val dataInputs = Map(
+      "domain" -> List( Map("name" -> "d0", "lat" -> Map("start" -> 10, "end" -> 10, "system" -> "values"), "lon" -> Map("start" -> 10, "end" -> 10, "system" -> "values"), "lev" -> Map("start" -> 8, "end" -> 8, "system" -> "indices"))),
+      "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "hur:v0", "domain" -> "d0")),
+      "operation" -> List(Map("unparsed" -> "( v0, axes: t, bins: t|month|year )")))
+    TaskRequest( "CDS.average", dataInputs )
   }
 
   def getTimeSliceAnomaly: TaskRequest = {
@@ -170,19 +193,11 @@ object SampleTaskRequests {
 }
 
 object executionTest extends App {
-  import java.io._
-  try {
-    val request = SampleTaskRequests.getTimeSliceAnomaly
-    val run_args = Map[String, Any]()
-    val cds2ExecutionManager = new CDS2ExecutionManager()
-    val result = cds2ExecutionManager.execute(request, run_args)
-    println(result.toString)
-  } catch {
-    case ex: Exception =>
-      val sw = new StringWriter
-      ex.printStackTrace(new PrintWriter(sw))
-      println( "Exception '%s':\n%s ".format(ex.getLocalizedMessage, sw.toString ))
-  }
+  val request = SampleTaskRequests.getYearlyCycleSlice
+  val run_args = Map[String, Any]()
+  val cds2ExecutionManager = new CDS2ExecutionManager()
+  val result = cds2ExecutionManager.execute(request, run_args)
+  println(result.toString)
 }
 
 object parseTest extends App {

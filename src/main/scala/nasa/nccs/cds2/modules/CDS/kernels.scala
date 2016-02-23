@@ -12,12 +12,12 @@ class CDS extends KernelModule with KernelTools {
   override val author = "Thomas Maxwell"
   override val contact = "thomas.maxwell@nasa.gov"
 
-  class average extends Kernel {
+  class raw_average extends Kernel {    // For timing comparisons only- does not account for missing values, uses NDArray builtin mean operator.
     val inputs = List(Port("input fragment", "1"))
     val outputs = List(Port("result", "1"))
-    override val description = "Average over Input Fragment"
+    override val description = "Raw Average over Input Fragment"
 
-    def execute(inputSubsets: List[PartitionedFragment] ): ExecutionResult = {
+    def execute(inputSubsets: List[PartitionedFragment], optargs: Map[String,String] ): ExecutionResult = {
       val input_array = inputSubsets(0).data
       val axisSpecs = inputSubsets(0).axisSpecs
       val axes = axisSpecs.getAxes
@@ -25,8 +25,24 @@ class CDS extends KernelModule with KernelTools {
       val mean_val = input_array.rawmean( axes:_* )
       val t1 = System.nanoTime
       logger.info("Kernel %s: Executed operation %s, time= %.4f s, result = %s ".format(name, operation, (t1-t0)/1.0E9, mean_val.toString ))
+      new ExecutionResult( mean_val.data )
+    }
+  }
+
+  class average extends Kernel {
+    val inputs = List(Port("input fragment", "1"))
+    val outputs = List(Port("result", "1"))
+    override val description = "Average over Input Fragment"
+
+    def execute(inputSubsets: List[PartitionedFragment], optargs: Map[String,String] ): ExecutionResult = {
+      val input_array = inputSubsets(0).data
+      val axisSpecs = inputSubsets(0).axisSpecs
+      val axes = axisSpecs.getAxes
       val t10 = System.nanoTime
-      val mean_val_masked = input_array.mean( axes:_* )
+      val mean_val_masked = optargs.get("bins") match {
+        case None => input_array.mean( axes:_* )
+        case Some(binSpec) => input_array.mean( axes:_* )
+      }
       val t11 = System.nanoTime
       println("Mean_val_masked, time = %.4f s, result = %s".format( (t11-t10)/1.0E9, mean_val_masked.toString ) )
       new ExecutionResult( mean_val_masked.data )
@@ -38,7 +54,7 @@ class CDS extends KernelModule with KernelTools {
     val outputs = List(Port("result", "1"))
     override val description = "Anomaly over Input Fragment"
 
-    def execute(inputSubsets: List[PartitionedFragment] ): ExecutionResult = {
+    def execute(inputSubsets: List[PartitionedFragment], optargs: Map[String,String] ): ExecutionResult = {
       val input_array = inputSubsets(0).data
       val axisSpecs = inputSubsets(0).axisSpecs
       val t10 = System.nanoTime
