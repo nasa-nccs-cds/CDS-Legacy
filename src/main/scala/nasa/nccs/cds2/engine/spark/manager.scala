@@ -23,7 +23,7 @@ class RDDataManager( val cdsContext: CDSparkContext, domainMap: Map[String,Domai
         domainMap.get(data_source.domain) match {
           case Some(domain_container) =>
             val variable = dataset.loadVariable(data_source.name)
-            val partAxis = "t"   // TODO: Compute this
+            val partAxis = 't'   // TODO: Compute this
             val pRDD = cdsContext.makeFragmentRDD( variable, domain_container.axes, partAxis, nPart, axisConf )
             prdds += uid -> pRDD
             logger.info("Loaded variable %s (%s:%s) subset data, shape = %s ".format(uid, data_source.collection, data_source.name, "") ) // pRDD.shape.toString) )

@@ -32,6 +32,24 @@ class CDS extends KernelModule with KernelTools {
       new ExecutionResult( mean_val_masked.data )
     }
   }
+
+  class anomaly extends Kernel {
+    val inputs = List(Port("input fragment", "1"))
+    val outputs = List(Port("result", "1"))
+    override val description = "Anomaly over Input Fragment"
+
+    def execute(inputSubsets: List[PartitionedFragment] ): ExecutionResult = {
+      val input_array = inputSubsets(0).data
+      val axisSpecs = inputSubsets(0).axisSpecs
+      val t10 = System.nanoTime
+      val mean_val_masked = input_array.mean( axisSpecs.getAxes:_* )
+      val bc_mean_val_masked = mean_val_masked.broadcast( input_array.shape:_* )
+      val anomaly_result = input_array - bc_mean_val_masked
+      val t11 = System.nanoTime
+      println("Anomaly, time = %.4f s, result = %s".format( (t11-t10)/1.0E9, anomaly_result.toString ) )
+      new ExecutionResult( anomaly_result.data )
+    }
+  }
 }
 
 

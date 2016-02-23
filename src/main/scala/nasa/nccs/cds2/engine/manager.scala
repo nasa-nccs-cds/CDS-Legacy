@@ -136,6 +136,14 @@ object SampleTaskRequests {
       TaskRequest( "CDS.average", dataInputs )
   }
 
+  def getTimeSliceAnomaly: TaskRequest = {
+    val dataInputs = Map(
+      "domain" -> List( Map("name" -> "d0", "lat" -> Map("start" -> 10, "end" -> 10, "system" -> "values"), "lon" -> Map("start" -> 10, "end" -> 10, "system" -> "values"), "lev" -> Map("start" -> 8, "end" -> 8, "system" -> "indices"))),
+      "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "hur:v0", "domain" -> "d0")),
+      "operation" -> List(Map("unparsed" -> "( v0, axes: t )")))
+    TaskRequest( "CDS.anomaly", dataInputs )
+  }
+
   def getSpatialAve: TaskRequest = {
     val dataInputs = Map(
       "domain" -> List( Map("name" -> "d0", "lev" -> Map("start" -> 8, "end" -> 8, "system" -> "indices"))),
@@ -162,14 +170,22 @@ object SampleTaskRequests {
 }
 
 object executionTest extends App {
-  val request = SampleTaskRequests.getSpatialAve
-  val run_args = Map[String,Any]()
-  val cds2ExecutionManager = new CDS2ExecutionManager()
-  val result = cds2ExecutionManager.execute( request, run_args )
-  println( result.toString )
+  import java.io._
+  try {
+    val request = SampleTaskRequests.getTimeSliceAnomaly
+    val run_args = Map[String, Any]()
+    val cds2ExecutionManager = new CDS2ExecutionManager()
+    val result = cds2ExecutionManager.execute(request, run_args)
+    println(result.toString)
+  } catch {
+    case ex: Exception =>
+      val sw = new StringWriter
+      ex.printStackTrace(new PrintWriter(sw))
+      println( "Exception '%s':\n%s ".format(ex.getLocalizedMessage, sw.toString ))
+  }
 }
 
-object trimTest extends App {
+object parseTest extends App {
   val axes = "c,,,"
   val r = axes.split(",").map(_.head).toList
   println( r )

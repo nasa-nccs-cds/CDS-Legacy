@@ -26,7 +26,7 @@ class CDSparkContext(val conf: SparkConf) {
 
   def getConf: SparkConf = sparkContext.getConf
 
-  def makeFragmentRDD( variable: CDSVariable, roi: List[DomainAxis], partAxis: String, nPart: Int, axisConf: List[OperationSpecs] ): RDD[PartitionedFragment] = {
+  def makeFragmentRDD( variable: CDSVariable, roi: List[DomainAxis], partAxis: Char, nPart: Int, axisConf: List[OperationSpecs] ): RDD[PartitionedFragment] = {
     val indexRDD: RDD[Int] = sparkContext.makeRDD( 0 to nPart-1, nPart )
     indexRDD.map( variable.loadRoiPartition( roi, _, partAxis, nPart, axisConf ) )
   }
