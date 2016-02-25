@@ -1,7 +1,6 @@
 package nasa.nccs.cds2.engine
 
-import nasa.nccs.cdapi.cdm
-import nasa.nccs.cdapi.cdm.{BinAccumulator, BinnedArray, PartitionedFragment, CDSVariable}
+import nasa.nccs.cdapi.cdm._
 import nasa.nccs.cds2.loaders.Collections
 import nasa.nccs.esgf.process._
 import nasa.nccs.esgf.engine.PluginExecutionManager
@@ -74,11 +73,11 @@ class CDS2ExecutionManager {
 
 class DataManager( val domainMap: Map[String,DomainContainer] ) {
   val logger = org.slf4j.LoggerFactory.getLogger("nasa.nccs.cds2.engine.DataManager")
-  var datasets = mutable.Map[String,cdm.CDSDataset]()
+  var datasets = mutable.Map[String,CDSDataset]()
   var subsets = mutable.Map[String,PartitionedFragment]()
   var variables = mutable.Map[String,CDSVariable]()
 
-  def getBinPartitions( operation: OperationContainer ): Option[BinnedArray[_]] = {
+  def getBinPartitions( operation: OperationContainer ): Option[BinnedSliceArray[_]] = {
     val uid = operation.inputs(0)
     operation.optargs.get("bins") match {
       case None => None
@@ -90,7 +89,7 @@ class DataManager( val domainMap: Map[String,DomainContainer] ) {
     }
   }
 
-  def getDataset( data_source: DataSource ): cdm.CDSDataset = {
+  def getDataset( data_source: DataSource ): CDSDataset = {
     val datasetName = data_source.collection.toLowerCase
     Collections.CreateIP.get(datasetName) match {
       case Some(collection) =>
@@ -98,7 +97,7 @@ class DataManager( val domainMap: Map[String,DomainContainer] ) {
         datasets.get(dataset_uid) match {
           case Some(dataset) => dataset
           case None =>
-            val dataset: cdm.CDSDataset = cdm.CDSDataset.load(datasetName, collection, data_source.name)
+            val dataset: CDSDataset = CDSDataset.load(datasetName, collection, data_source.name)
             datasets += dataset_uid -> dataset
             dataset
         }
@@ -120,7 +119,7 @@ class DataManager( val domainMap: Map[String,DomainContainer] ) {
     subsets.get(uid) match {
       case Some(subset) => subset
       case None =>
-        val dataset: cdm.CDSDataset = getDataset(data_source)
+        val dataset: CDSDataset = getDataset(data_source)
         domainMap.get(data_source.domain) match {
           case Some(domain_container) =>
             val variable = dataset.loadVariable(data_source.name)
