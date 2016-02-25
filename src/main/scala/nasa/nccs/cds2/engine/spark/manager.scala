@@ -37,7 +37,7 @@ class RDDataManager( val cdsContext: CDSparkContext, domainMap: Map[String,Domai
 
 class CDSparkExecutionManager( val cdsContext: CDSparkContext ) extends CDS2ExecutionManager {
 
-  override def execute( request: TaskRequest, run_args: Map[String,Any] ): xml.Elem = {
+  override def execute( request: TaskRequest, run_args: Map[String,String] ): xml.Elem = {
     logger.info("Execute { request: " + request.toString + ", runargs: " + run_args.toString + "}"  )
     val data_manager = new RDDataManager( cdsContext, request.domainMap )
     val nPart = 4  // TODO: Compute this
@@ -53,7 +53,7 @@ object sparkExecutionTest extends App {
   val sc = new CDSparkContext(conf)
   val npart = 4
   val request = SampleTaskRequests.getAveArray
-  val run_args = Map[String,Any]()
+  val run_args = Map[String,String]()
   val cdsExecutionManager = new CDSparkExecutionManager( sc )
   val result = cdsExecutionManager.execute( request, run_args )
   println( result.toString )

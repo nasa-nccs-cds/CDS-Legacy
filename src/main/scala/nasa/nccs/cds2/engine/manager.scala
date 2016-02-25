@@ -1,7 +1,7 @@
 package nasa.nccs.cds2.engine
 
 import nasa.nccs.cdapi.cdm
-import nasa.nccs.cdapi.cdm.{BinPartitioner, PartitionedFragment, CDSVariable}
+import nasa.nccs.cdapi.cdm.{BinAccumulator, BinnedArray, PartitionedFragment, CDSVariable}
 import nasa.nccs.cds2.loaders.Collections
 import nasa.nccs.esgf.process._
 import nasa.nccs.esgf.engine.PluginExecutionManager
@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory
 import scala.collection.mutable
 import nasa.nccs.utilities.cdsutils
 import nasa.nccs.cds2.kernels.kernelManager
-import nasa.nccs.cdapi.kernels.{ Kernel, KernelModule, ExecutionResult, ExecutionResults, DataFragment }
+import nasa.nccs.cdapi.kernels.{ Kernel, KernelModule, ExecutionResult, ExecutionContext, ExecutionResults, DataFragment }
 
 
 //object cds2PluginExecutionManager extends PluginExecutionManager {
@@ -45,7 +45,7 @@ class CDS2ExecutionManager {
     getKernel( toks.dropRight(1).mkString("."), toks.last )
   }
 
-  def execute( request: TaskRequest, run_args: Map[String,Any] ): xml.Elem = {
+  def execute( request: TaskRequest, run_args: Map[String,String] ): xml.Elem = {
     logger.info("Execute { request: " + request.toString + ", runargs: " + run_args.toString + "}"  )
     val data_manager = new DataManager( request.domainMap )
     for( data_container <- request.variableMap.values; if data_container.isSource )
@@ -57,14 +57,18 @@ class CDS2ExecutionManager {
 
   def listProcesses(): xml.Elem = kernelManager.toXml
 
-  def executeWorkflows( workflows: List[WorkflowContainer], data_manager: DataManager, run_args: Map[String,Any] ): ExecutionResults = {
+  def executeWorkflows( workflows: List[WorkflowContainer], data_manager: DataManager, run_args: Map[String,String] ): ExecutionResults = {
     new ExecutionResults( workflows.map( workflow => workflow.operations.map( operation => operationExecution( operation, data_manager,  run_args ) ) ).flatten )
   }
 
-  def operationExecution(operation: OperationContainer, data_manager: DataManager, run_args: Map[String, Any]): ExecutionResult = {
-    val inputSubsets: List[PartitionedFragment] = operation.inputs.map(data_manager.getVariableData(_))
-    val binPartitioner = data_manager.getBinPartitioner( operation )
-    getKernel( operation.name.toLowerCase ).execute( inputSubsets, operation.optargs )
+  def operationExecution(operation: OperationContainer, data_manager: DataManager, run_args: Map[String, String]): ExecutionResult = {
+    getKernel( operation.name.toLowerCase ).execute( getExecutionContext(operation, data_manager, run_args) )
+  }
+  def getExecutionContext( operation: OperationContainer, data_manager: DataManager, run_args: Map[String, String] ): ExecutionContext = {
+    val fragments: List[PartitionedFragment] = operation.inputs.map(data_manager.getVariableData(_))
+    val bins = data_manager.getBinPartitions( operation )
+    val args = operation.optargs ++ run_args
+    new ExecutionContext( fragments, bins, args  )
   }
 }
 
@@ -74,14 +78,14 @@ class DataManager( val domainMap: Map[String,DomainContainer] ) {
   var subsets = mutable.Map[String,PartitionedFragment]()
   var variables = mutable.Map[String,CDSVariable]()
 
-  def getBinPartitioner( operation: OperationContainer ): Option[BinPartitioner] = {
+  def getBinPartitions( operation: OperationContainer ): Option[BinnedArray[_]] = {
     val uid = operation.inputs(0)
     operation.optargs.get("bins") match {
       case None => None
       case Some(binSpec) =>
         variables.get(uid) match {
           case None => throw new Exception( "DataManager can't find variable %s in getBinScaffold, variables = [%s]".format(uid,variables.keys.mkString(",")))
-          case Some(variable) => Some( variable.getBinPartitioner( binSpec.split('|') ) )
+          case Some(variable) => Some( variable.getBinnedArray( binSpec ) )
         }
     }
   }
@@ -194,7 +198,7 @@ object SampleTaskRequests {
 
 object executionTest extends App {
   val request = SampleTaskRequests.getYearlyCycleSlice
-  val run_args = Map[String, Any]()
+  val run_args = Map[String, String]()
   val cds2ExecutionManager = new CDS2ExecutionManager()
   val result = cds2ExecutionManager.execute(request, run_args)
   println(result.toString)

@@ -1,7 +1,7 @@
 package nasa.nccs.cds2.modules.CDS
 
 import nasa.nccs.cdapi.cdm.PartitionedFragment
-import nasa.nccs.cdapi.kernels.{ Kernel, Port, KernelModule, ExecutionResult, DataFragment }
+import nasa.nccs.cdapi.kernels._
 import nasa.nccs.cds2.kernels.KernelTools
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4s.Implicits._
@@ -17,7 +17,9 @@ class CDS extends KernelModule with KernelTools {
     val outputs = List(Port("result", "1"))
     override val description = "Raw Average over Input Fragment"
 
-    def execute(inputSubsets: List[PartitionedFragment], optargs: Map[String,String] ): ExecutionResult = {
+    def execute( context: ExecutionContext ): ExecutionResult = {
+      val inputSubsets: List[PartitionedFragment] =  context.fragments
+      val optargs: Map[String,String] =  context.args
       val input_array = inputSubsets(0).data
       val axisSpecs = inputSubsets(0).axisSpecs
       val axes = axisSpecs.getAxes
@@ -34,14 +36,13 @@ class CDS extends KernelModule with KernelTools {
     val outputs = List(Port("result", "1"))
     override val description = "Average over Input Fragment"
 
-    def execute(inputSubsets: List[PartitionedFragment], optargs: Map[String,String] ): ExecutionResult = {
-      val input_array = inputSubsets(0).data
-      val axisSpecs = inputSubsets(0).axisSpecs
-      val axes = axisSpecs.getAxes
+    def execute(context: ExecutionContext ): ExecutionResult = {
+      val input_array = context.fragments(0).data
+      val axes = context.fragments(0).axisSpecs.getAxes
       val t10 = System.nanoTime
-      val mean_val_masked = optargs.get("bins") match {
+      val mean_val_masked = context.bins match {
         case None => input_array.mean( axes:_* )
-        case Some(binSpec) => input_array.mean( axes:_* )
+        case Some(binsArray) => input_array.mean( axes:_*, binsArray )
       }
       val t11 = System.nanoTime
       println("Mean_val_masked, time = %.4f s, result = %s".format( (t11-t10)/1.0E9, mean_val_masked.toString ) )
@@ -54,7 +55,9 @@ class CDS extends KernelModule with KernelTools {
     val outputs = List(Port("result", "1"))
     override val description = "Anomaly over Input Fragment"
 
-    def execute(inputSubsets: List[PartitionedFragment], optargs: Map[String,String] ): ExecutionResult = {
+    def execute(context: ExecutionContext ): ExecutionResult = {
+      val inputSubsets: List[PartitionedFragment] =  context.fragments
+      val optargs: Map[String,String] =  context.args
       val input_array = inputSubsets(0).data
       val axisSpecs = inputSubsets(0).axisSpecs
       val t10 = System.nanoTime
