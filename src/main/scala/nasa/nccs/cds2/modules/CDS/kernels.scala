@@ -40,13 +40,30 @@ class CDS extends KernelModule with KernelTools {
       val input_array = context.fragments(0).data
       val axes = context.fragments(0).axisSpecs.getAxes
       val t10 = System.nanoTime
-      val mean_val_masked = context.bins match {
-        case None => input_array.mean( axes:_* )
-        case Some(binsArray) => input_array.mean( axes:_*, binsArray )
-      }
+      val mean_val_masked = input_array.mean( axes:_* )
       val t11 = System.nanoTime
       println("Mean_val_masked, time = %.4f s, result = %s".format( (t11-t10)/1.0E9, mean_val_masked.toString ) )
       new ExecutionResult( mean_val_masked.data )
+    }
+  }
+
+  class bin extends Kernel {
+    val inputs = List(Port("input fragment", "1"))
+    val outputs = List(Port("result", "1"))
+    override val description = "Binnins over Input Fragment"
+
+    def execute(context: ExecutionContext ): ExecutionResult = {
+      val input_array = context.fragments(0).data
+      val axes = context.fragments(0).axisSpecs.getAxes
+      val t10 = System.nanoTime
+      val bins = context.bins match {
+        case None => throw new Exception( "Must specify bin spec in bin operation")
+        case Some(binsArray) => binsArray
+      }
+      val binned_value = input_array.bin(axes,bins)
+      val t11 = System.nanoTime
+      println("Binned array, time = %.4f s, result = %s".format( (t11-t10)/1.0E9, binned_value.toString ) )
+      new ExecutionResult( binned_value.data )
     }
   }
 
