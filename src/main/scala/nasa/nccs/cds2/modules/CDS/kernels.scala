@@ -1,10 +1,12 @@
 package nasa.nccs.cds2.modules.CDS
 
-import nasa.nccs.cdapi.cdm.PartitionedFragment
+import nasa.nccs.cdapi.cdm.{aveSliceAccumulator, PartitionedFragment}
 import nasa.nccs.cdapi.kernels._
 import nasa.nccs.cds2.kernels.KernelTools
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4s.Implicits._
+import scala.reflect.runtime._
+import scala.reflect.runtime.universe._
 
 class CDS extends KernelModule with KernelTools {
   override val version = "1.0-SNAPSHOT"
@@ -61,10 +63,10 @@ class CDS extends KernelModule with KernelTools {
         case Some(binsArray) => binsArray
       }
       assert( axes.length == 1, "Must bin over 1 axis only! Requested: " + axes.mkString(",") )
-      val binned_value = input_array.bin(axes[0],bins)
+      val binned_value = input_array.bin[aveSliceAccumulator](axes(0),bins)
       val t11 = System.nanoTime
       println("Binned array, time = %.4f s, result = %s".format( (t11-t10)/1.0E9, binned_value.toString ) )
-      new ExecutionResult( binned_value.data )
+      new ExecutionResult( binned_value(0).data )
     }
   }
 

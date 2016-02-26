@@ -77,7 +77,7 @@ class DataManager( val domainMap: Map[String,DomainContainer] ) {
   var subsets = mutable.Map[String,PartitionedFragment]()
   var variables = mutable.Map[String,CDSVariable]()
 
-  def getBinPartitions( operation: OperationContainer ): Option[BinnedSliceArray[_]] = {
+  def getBinPartitions( operation: OperationContainer ): Option[BinnedSliceArray[aveSliceAccumulator]] = {
     val uid = operation.inputs(0)
     operation.optargs.get("bins") match {
       case None => None
@@ -159,7 +159,7 @@ object SampleTaskRequests {
       "domain" -> List( Map("name" -> "d0", "lat" -> Map("start" -> 10, "end" -> 10, "system" -> "values"), "lon" -> Map("start" -> 10, "end" -> 10, "system" -> "values"), "lev" -> Map("start" -> 8, "end" -> 8, "system" -> "indices"))),
       "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "hur:v0", "domain" -> "d0")),
       "operation" -> List(Map("unparsed" -> "( v0, axes: t, bins: t|month|year )")))
-    TaskRequest( "CDS.average", dataInputs )
+    TaskRequest( "CDS.bin", dataInputs )
   }
 
   def getTimeSliceAnomaly: TaskRequest = {
