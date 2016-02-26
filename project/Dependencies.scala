@@ -52,7 +52,7 @@ object Dependencies {
 
   val spark = Seq( sparkCore )
 
-  val ndarray = Seq( nd4s, nd4j, breeze )
+  val ndarray = Seq( nd4s, nd4j )
 
   val kernels = Seq( kernelmod, cdapi )
 }
