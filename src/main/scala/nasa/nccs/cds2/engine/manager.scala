@@ -65,9 +65,9 @@ class CDS2ExecutionManager {
   }
   def getExecutionContext( operation: OperationContainer, data_manager: DataManager, run_args: Map[String, String] ): ExecutionContext = {
     val fragments: List[PartitionedFragment] = operation.inputs.map(data_manager.getVariableData(_))
-    val bins = data_manager.getBinPartitions( operation )
+    val binArrayOpt = data_manager.getBinnedArrayFactory( operation )
     val args = operation.optargs ++ run_args
-    new ExecutionContext( fragments, bins, args  )
+    new ExecutionContext( fragments, binArrayOpt, args  )
   }
 }
 
@@ -77,14 +77,14 @@ class DataManager( val domainMap: Map[String,DomainContainer] ) {
   var subsets = mutable.Map[String,PartitionedFragment]()
   var variables = mutable.Map[String,CDSVariable]()
 
-  def getBinPartitions( operation: OperationContainer ): Option[BinnedSliceArray[aveSliceAccumulator]] = {
+  def getBinnedArrayFactory( operation: OperationContainer ): Option[BinnedArrayFactory] = {
     val uid = operation.inputs(0)
     operation.optargs.get("bins") match {
       case None => None
       case Some(binSpec) =>
         variables.get(uid) match {
           case None => throw new Exception( "DataManager can't find variable %s in getBinScaffold, variables = [%s]".format(uid,variables.keys.mkString(",")))
-          case Some(variable) => Some( variable.getBinnedArray( binSpec ) )
+          case Some(variable) => Some( BinnedArrayFactory( binSpec, variable.dataset ) )
         }
     }
   }
@@ -158,7 +158,7 @@ object SampleTaskRequests {
     val dataInputs = Map(
       "domain" -> List( Map("name" -> "d0", "lat" -> Map("start" -> 45, "end" -> 45, "system" -> "values"), "lon" -> Map("start" -> 30, "end" -> 30, "system" -> "values"), "lev" -> Map("start" -> 3, "end" -> 3, "system" -> "indices"))),
       "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "ta:v0", "domain" -> "d0")),
-      "operation" -> List(Map("unparsed" -> "( v0, axes: t, bins: t|month|year )")))
+      "operation" -> List(Map("unparsed" -> "( v0, axes: t, bins: t|month|ave|year )")))
     TaskRequest( "CDS.bin", dataInputs )
   }
 
