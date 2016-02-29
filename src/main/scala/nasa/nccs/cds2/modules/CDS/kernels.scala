@@ -48,6 +48,24 @@ class CDS extends KernelModule with KernelTools {
       new ExecutionResult( mean_val_masked.data )
     }
   }
+  class subset extends Kernel {
+    val inputs = List(Port("input fragment", "1"))
+    val outputs = List(Port("result", "1"))
+    override val description = "Average over Input Fragment"
+
+    def execute(context: ExecutionContext ): ExecutionResult = {
+      val input = context.fragments(0)
+      val axes = context.fragments(0).axisSpecs.getAxes
+      val t0 = System.nanoTime
+      val result = context.args.get("domain") match {
+        case None => input.data
+        case Some(domain) => context.dataManager.getSubset( input.uid, domain ).data
+      }
+      val t1 = System.nanoTime
+      println("Subset: time = %.4f s, result = %s, value = [ %s ]".format( (t1-t0)/1.0E9, result.toString, result.data.mkString(",") ) )
+      new ExecutionResult( result.data )
+    }
+  }
 
   class bin extends Kernel {
     val inputs = List(Port("input fragment", "1"))

@@ -3,13 +3,13 @@ package nasa.nccs.cds2.engine.spark
 import nasa.nccs.cdapi.kernels.DataFragment
 import nasa.nccs.cdapi.cdm
 import nasa.nccs.cdapi.cdm.PartitionedFragment
-import nasa.nccs.cds2.engine.{SampleTaskRequests, DataManager, CDS2ExecutionManager}
+import nasa.nccs.cds2.engine.{CollectionDataLoader, SampleTaskRequests, CDS2ExecutionManager}
 import nasa.nccs.esgf.process._
 import org.apache.spark.rdd.RDD
 
 import scala.collection.mutable
 
-class RDDataManager( val cdsContext: CDSparkContext, domainMap: Map[String,DomainContainer] ) extends DataManager(domainMap) {
+class RDDataManager( val cdsContext: CDSparkContext, domainMap: Map[String,DomainContainer] ) extends DataManager( domainMap, new CollectionDataLoader() ) {
   var prdds = mutable.Map[String, RDD[PartitionedFragment]]()
 
   def loadRDData( data_container: DataContainer, nPart: Int ):  RDD[PartitionedFragment] = {
@@ -19,10 +19,10 @@ class RDDataManager( val cdsContext: CDSparkContext, domainMap: Map[String,Domai
     prdds.get(uid) match {
       case Some(prdd) => prdd
       case None =>
-        val dataset: cdm.CDSDataset = getDataset(data_source)
+        val dataset: cdm.CDSDataset = dataLoader.getDataset(data_source)
         domainMap.get(data_source.domain) match {
           case Some(domain_container) =>
-            val variable = dataset.loadVariable(data_source.name)
+            val variable = dataset.loadVariable(uid, data_source.name)
             val partAxis = 't'   // TODO: Compute this
             val pRDD = cdsContext.makeFragmentRDD( variable, domain_container.axes, partAxis, nPart, axisConf )
             prdds += uid -> pRDD

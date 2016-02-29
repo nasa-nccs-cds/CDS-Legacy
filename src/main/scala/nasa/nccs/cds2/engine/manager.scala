@@ -46,7 +46,7 @@ class CDS2ExecutionManager {
 
   def execute( request: TaskRequest, run_args: Map[String,String] ): xml.Elem = {
     logger.info("Execute { request: " + request.toString + ", runargs: " + run_args.toString + "}"  )
-    val data_manager = new DataManager( request.domainMap )
+    val data_manager = new DataManager( request.domainMap, new CollectionDataLoader() )
     for( data_container <- request.variableMap.values; if data_container.isSource )
       data_manager.loadVariableData( data_container )
     executeWorkflows( request.workflows, data_manager, run_args ).toXml
@@ -67,29 +67,14 @@ class CDS2ExecutionManager {
     val fragments: List[PartitionedFragment] = operation.inputs.map(data_manager.getVariableData(_))
     val binArrayOpt = data_manager.getBinnedArrayFactory( operation )
     val args = operation.optargs ++ run_args
-    new ExecutionContext( fragments, binArrayOpt, args  )
+    new ExecutionContext( fragments, binArrayOpt, data_manager, args  )
   }
 }
 
-class DataManager( val domainMap: Map[String,DomainContainer] ) {
-  val logger = org.slf4j.LoggerFactory.getLogger("nasa.nccs.cds2.engine.DataManager")
+class CollectionDataLoader extends DataLoader {
   var datasets = mutable.Map[String,CDSDataset]()
-  var subsets = mutable.Map[String,PartitionedFragment]()
-  var variables = mutable.Map[String,CDSVariable]()
 
-  def getBinnedArrayFactory( operation: OperationContainer ): Option[BinnedArrayFactory] = {
-    val uid = operation.inputs(0)
-    operation.optargs.get("bins") match {
-      case None => None
-      case Some(binSpec) =>
-        variables.get(uid) match {
-          case None => throw new Exception( "DataManager can't find variable %s in getBinScaffold, variables = [%s]".format(uid,variables.keys.mkString(",")))
-          case Some(variable) => Some( BinnedArrayFactory( binSpec, variable.dataset ) )
-        }
-    }
-  }
-
-  def getDataset( data_source: DataSource ): CDSDataset = {
+  def getDataset(data_source: DataSource): CDSDataset = {
     val datasetName = data_source.collection.toLowerCase
     Collections.CreateIP.get(datasetName) match {
       case Some(collection) =>
@@ -105,35 +90,6 @@ class DataManager( val domainMap: Map[String,DomainContainer] ) {
         throw new Exception("Undefined collection for dataset " + data_source.name + ", collection = " + data_source.collection)
     }
   }
-
-  def getVariableData(uid: String): PartitionedFragment = {
-    subsets.get(uid) match {
-      case Some(subset) => subset
-      case None => throw new Exception("Can't find subset Data for Variable $uid")
-    }
-  }
-
-  def loadVariableData( data_container: DataContainer ): DataFragment = {
-    val uid = data_container.uid
-    val data_source = data_container.getSource
-    subsets.get(uid) match {
-      case Some(subset) => subset
-      case None =>
-        val dataset: CDSDataset = getDataset(data_source)
-        domainMap.get(data_source.domain) match {
-          case Some(domain_container) =>
-            val variable = dataset.loadVariable(data_source.name)
-            val fragment = variable.loadRoi( domain_container.axes, data_container.getOpSpecs )
-            subsets += uid -> fragment
-            variables += uid -> variable
-            logger.info("Loaded variable %s (%s:%s) subset data, shape = %s ".format(uid, data_source.collection, data_source.name, fragment.shape.toString) )
-            fragment
-          case None =>
-            throw new Exception("Undefined domain for dataset " + data_source.name + ", domain = " + data_source.domain)
-        }
-    }
-  }
-
 }
 
 object SampleTaskRequests {
@@ -160,6 +116,14 @@ object SampleTaskRequests {
       "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "ta:v0", "domain" -> "d0")),
       "operation" -> List(Map("unparsed" -> "( v0, axes: t, bins: t|month|ave|year )")))
     TaskRequest( "CDS.bin", dataInputs )
+  }
+  def getCreateVRequest: TaskRequest = {
+    val dataInputs = Map(
+      "domain" -> List( Map("name" -> "d0", "lat" -> Map("start" -> 45, "end" -> 45, "system" -> "values"), "lon" -> Map("start" -> 30, "end" -> 30, "system" -> "values"), "lev" -> Map("start" -> 3, "end" -> 3, "system" -> "indices")),
+                        Map("name" -> "d1", "time" -> Map("start" -> 3, "end" -> 3, "system" -> "indices") ) ),
+      "variable" -> List( Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "ta:v0", "domain" -> "d0") ),
+      "operation" -> List(Map("unparsed" -> "CDS.anomaly( v0, axes: t ),CDS.bin( v0, axes: t, bins: t|month|ave|year ),CDS.subset( v0, domain:d1 )" )) )
+    TaskRequest( "CDS.workflow", dataInputs )
   }
 
   def getTimeSliceAnomaly: TaskRequest = {
@@ -196,7 +160,7 @@ object SampleTaskRequests {
 }
 
 object executionTest extends App {
-  val request = SampleTaskRequests.getYearlyCycleSlice
+  val request = SampleTaskRequests.getCreateVRequest
   val run_args = Map[String, String]()
   val cds2ExecutionManager = new CDS2ExecutionManager()
   val result = cds2ExecutionManager.execute(request, run_args)
@@ -207,6 +171,11 @@ object parseTest extends App {
   val axes = "c,,,"
   val r = axes.split(",").map(_.head).toList
   println( r )
+}
+
+object arrayTest extends App {
+  val array = Nd4j.create( Array.fill[Float](100)(1f), Array(50,1,2))
+  val s0 = array.slice(0, 0 ); println( "shape = %s".format( s0.shape.mkString(",")) )
 }
 
 
