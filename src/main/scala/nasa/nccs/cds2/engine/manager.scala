@@ -11,6 +11,11 @@ import scala.collection.mutable
 import nasa.nccs.utilities.cdsutils
 import nasa.nccs.cds2.kernels.kernelManager
 import nasa.nccs.cdapi.kernels.{ Kernel, KernelModule, ExecutionResult, ExecutionContext, ExecutionResults, DataFragment }
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await,Future}
+import scala.util.{ Try, Success, Failure }
+import scala.xml.Elem
 
 
 //object cds2PluginExecutionManager extends PluginExecutionManager {
@@ -26,6 +31,11 @@ object collectionDataManager extends DataManager( new CollectionDataLoader() )
 
 class CDS2ExecutionManager {
   val logger = LoggerFactory.getLogger(this.getClass)
+  private var futureResult: Option[Future[xml.Elem]] = None
+  val processAsyncResult: PartialFunction[Try[xml.Elem],Unit] = {
+    case n @ Success(_) => println( "Process Completed: " + n.toString )
+    case e @ Failure(_) => println( "Process Error: " + e.toString )
+  }
 
   def getKernelModule( moduleName: String  ): KernelModule = {
     kernelManager.getModule( moduleName  ) match {
@@ -45,13 +55,37 @@ class CDS2ExecutionManager {
     getKernel( toks.dropRight(1).mkString("."), toks.last )
   }
 
-  def execute( request: TaskRequest, run_args: Map[String,String] ): xml.Elem = {
-    logger.info("Execute { request: " + request.toString + ", runargs: " + run_args.toString + "}"  )
-
-    for( data_container <- request.variableMap.values; if data_container.isSource ) {
-      collectionDataManager.loadVariableData( data_container, request.getDomain( data_container.getSource ) )
+  def futureExecute( request: TaskRequest, run_args: Map[String,String] ): Future[xml.Elem] = Future {
+    try {
+      for (data_container <- request.variableMap.values; if data_container.isSource) {
+        collectionDataManager.loadVariableData(data_container, request.getDomain(data_container.getSource))
+      }
+      executeWorkflows(request, run_args).toXml
+    } catch {
+      case err: Exception => <Error> { err.toString } </Error>
     }
-    executeWorkflows( request, run_args ).toXml
+  }
+
+  def execute( request: TaskRequest, run_args: Map[String,String] ): xml.Elem = {
+    logger.info("Execute { request: " + request.toString + ", runargs: " + run_args.toString + "}")
+    val async = run_args.getOrElse("async", "false").toBoolean
+    futureResult = Option( this.futureExecute( request, run_args ) )
+    if(async) { asyncResult;  <result> </result> }
+    else awaitResult
+  }
+
+  def asyncResult: Unit = {
+    futureResult match {
+      case None => Unit
+      case Some( result ) => result onComplete processAsyncResult
+    }
+  }
+
+  def awaitResult: xml.Elem = {
+    futureResult match {
+      case None => <Error> { "No result" } </Error>
+      case Some( result ) => Await.result( result, Duration.Inf )
+    }
   }
 
   def describeProcess( kernelName: String ): xml.Elem = getKernel( kernelName ).toXml
@@ -169,11 +203,13 @@ object SampleTaskRequests {
 }
 
 object executionTest extends App {
-  val request = SampleTaskRequests.getCacheRequest
-  val run_args = Map[String, String]()
+  val request = SampleTaskRequests.getTimeSliceAnomaly
+  val async = false
+  val run_args = Map( "async" -> async.toString )
   val cds2ExecutionManager = new CDS2ExecutionManager()
   val result = cds2ExecutionManager.execute(request, run_args)
   println(result.toString)
+  cds2ExecutionManager.awaitResult
 }
 
 object parseTest extends App {
