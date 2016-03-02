@@ -2,6 +2,7 @@ package nasa.nccs.cds2.modules.CDS
 
 import nasa.nccs.cdapi.cdm.{BinnedArrayFactory, aveSliceAccumulator, PartitionedFragment}
 import nasa.nccs.cdapi.kernels._
+import nasa.nccs.cds2.engine.collectionDataManager
 import nasa.nccs.cds2.kernels.KernelTools
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4s.Implicits._
@@ -59,7 +60,7 @@ class CDS extends KernelModule with KernelTools {
       val t0 = System.nanoTime
       val result = context.args.get("domain") match {
         case None => input.data
-        case Some(domain) => context.dataManager.getSubset( input.uid, domain ).data
+        case Some(domain_id) => context.getSubset( input.uid, domain_id ).data
       }
       val t1 = System.nanoTime
       println("Subset: time = %.4f s, result = %s, value = [ %s ]".format( (t1-t0)/1.0E9, result.toString, result.data.mkString(",") ) )
@@ -77,7 +78,7 @@ class CDS extends KernelModule with KernelTools {
       val axes = context.fragments(0).axisSpecs.getAxes
       val t10 = System.nanoTime
       val binFactory: BinnedArrayFactory = context.binArrayOpt match {
-        case None => throw new Exception( "Must specify bin spec in bin operation")
+        case None => throw new Exception( "Must include bin spec in bin operation")
         case Some(bf) => bf
       }
       assert( axes.length == 1, "Must bin over 1 axis only! Requested: " + axes.mkString(",") )

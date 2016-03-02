@@ -22,6 +22,7 @@ import nasa.nccs.cdapi.kernels.{ Kernel, KernelModule, ExecutionResult, Executio
 //  }
 //}
 
+object collectionDataManager extends DataManager( new CollectionDataLoader() )
 
 class CDS2ExecutionManager {
   val logger = LoggerFactory.getLogger(this.getClass)
@@ -46,28 +47,29 @@ class CDS2ExecutionManager {
 
   def execute( request: TaskRequest, run_args: Map[String,String] ): xml.Elem = {
     logger.info("Execute { request: " + request.toString + ", runargs: " + run_args.toString + "}"  )
-    val data_manager = new DataManager( request.domainMap, new CollectionDataLoader() )
-    for( data_container <- request.variableMap.values; if data_container.isSource )
-      data_manager.loadVariableData( data_container )
-    executeWorkflows( request.workflows, data_manager, run_args ).toXml
+
+    for( data_container <- request.variableMap.values; if data_container.isSource ) {
+      collectionDataManager.loadVariableData( data_container, request.getDomain( data_container.getSource ) )
+    }
+    executeWorkflows( request, run_args ).toXml
   }
 
   def describeProcess( kernelName: String ): xml.Elem = getKernel( kernelName ).toXml
 
   def listProcesses(): xml.Elem = kernelManager.toXml
 
-  def executeWorkflows( workflows: List[WorkflowContainer], data_manager: DataManager, run_args: Map[String,String] ): ExecutionResults = {
-    new ExecutionResults( workflows.map( workflow => workflow.operations.map( operation => operationExecution( operation, data_manager,  run_args ) ) ).flatten )
+  def executeWorkflows( request: TaskRequest, run_args: Map[String,String] ): ExecutionResults = {
+    new ExecutionResults( request.workflows.map( workflow => workflow.operations.map( operation => operationExecution( operation, request.domainMap,  run_args ) ) ).flatten )
   }
 
-  def operationExecution(operation: OperationContainer, data_manager: DataManager, run_args: Map[String, String]): ExecutionResult = {
-    getKernel( operation.name.toLowerCase ).execute( getExecutionContext(operation, data_manager, run_args) )
+  def operationExecution(operation: OperationContainer, domainMap: Map[String,DomainContainer], run_args: Map[String, String]): ExecutionResult = {
+    getKernel( operation.name.toLowerCase ).execute( getExecutionContext(operation, domainMap, run_args) )
   }
-  def getExecutionContext( operation: OperationContainer, data_manager: DataManager, run_args: Map[String, String] ): ExecutionContext = {
-    val fragments: List[PartitionedFragment] = operation.inputs.map(data_manager.getVariableData(_))
-    val binArrayOpt = data_manager.getBinnedArrayFactory( operation )
+  def getExecutionContext( operation: OperationContainer, domainMap: Map[String,DomainContainer], run_args: Map[String, String] ): ExecutionContext = {
+    val fragments: List[PartitionedFragment] = operation.inputs.map(collectionDataManager.getVariableData(_))
+    val binArrayOpt = collectionDataManager.getBinnedArrayFactory( operation )
     val args = operation.optargs ++ run_args
-    new ExecutionContext( fragments, binArrayOpt, data_manager, args  )
+    new ExecutionContext( fragments, binArrayOpt, domainMap, collectionDataManager, args )
   }
 }
 
@@ -134,10 +136,17 @@ object SampleTaskRequests {
     TaskRequest( "CDS.anomaly", dataInputs )
   }
 
+  def getCacheRequest: TaskRequest = {
+    val dataInputs = Map(
+      "domain" -> List( Map("name" -> "d0",  "lev" -> Map("start" -> 3, "end" -> 3, "system" -> "indices"))),
+      "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "ta:v0", "domain" -> "d0")) )
+    TaskRequest( "util.cache", dataInputs )
+  }
+
   def getSpatialAve: TaskRequest = {
     val dataInputs = Map(
       "domain" -> List( Map("name" -> "d0", "lev" -> Map("start" -> 8, "end" -> 8, "system" -> "indices"))),
-      "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "hur:v0", "domain" -> "d0")),
+      "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "ta:v0", "domain" -> "d0")),
       "operation" -> List(Map("unparsed" -> "( v0, axes: xy, y.weights: inverse_cosine )")))
     TaskRequest( "CDS.average", dataInputs )
   }
@@ -160,7 +169,7 @@ object SampleTaskRequests {
 }
 
 object executionTest extends App {
-  val request = SampleTaskRequests.getCreateVRequest
+  val request = SampleTaskRequests.getCacheRequest
   val run_args = Map[String, String]()
   val cds2ExecutionManager = new CDS2ExecutionManager()
   val result = cds2ExecutionManager.execute(request, run_args)
