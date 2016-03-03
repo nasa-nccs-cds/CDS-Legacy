@@ -2,8 +2,8 @@ package nasa.nccs.cds2.modules.CDS
 
 import nasa.nccs.cdapi.cdm.{BinnedArrayFactory, aveSliceAccumulator, PartitionedFragment}
 import nasa.nccs.cdapi.kernels._
-import nasa.nccs.cds2.engine.collectionDataManager
 import nasa.nccs.cds2.kernels.KernelTools
+import nasa.nccs.esgf.process.DataSource
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4s.Implicits._
 import scala.reflect.runtime._
@@ -58,9 +58,11 @@ class CDS extends KernelModule with KernelTools {
       val input = context.fragments(0)
       val axes = context.fragments(0).axisSpecs.getAxes
       val t0 = System.nanoTime
+      def input_uids = context.getDataSources.keySet
+      assert( input_uids.size == 1, "Wrong number of arguments to 'subset': %d ".format(input_uids.size) )
       val result = context.args.get("domain") match {
         case None => input.data
-        case Some(domain_id) => context.getSubset( input.uid, domain_id ).data
+        case Some(domain_id) => context.getSubset( input_uids.head, domain_id ).data
       }
       val t1 = System.nanoTime
       println("Subset: time = %.4f s, result = %s, value = [ %s ]".format( (t1-t0)/1.0E9, result.toString, result.data.mkString(",") ) )

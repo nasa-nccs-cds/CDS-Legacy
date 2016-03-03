@@ -1,35 +1,44 @@
 package nasa.nccs.cds2.engine
-
+import java.io.{PrintWriter, StringWriter}
 import nasa.nccs.cdapi.cdm._
 import nasa.nccs.cds2.loaders.Collections
 import nasa.nccs.esgf.process._
-import nasa.nccs.esgf.engine.PluginExecutionManager
-import org.apache.spark.rdd.RDD
 import org.nd4j.linalg.factory.Nd4j
 import org.slf4j.LoggerFactory
-import scala.collection.mutable
+import scala.collection.{concurrent, mutable}
 import nasa.nccs.utilities.cdsutils
 import nasa.nccs.cds2.kernels.kernelManager
-import nasa.nccs.cdapi.kernels.{ Kernel, KernelModule, ExecutionResult, ExecutionContext, ExecutionResults, DataFragment }
+import nasa.nccs.cdapi.kernels.{ Kernel, KernelModule, ExecutionResult, ExecutionContext, ExecutionResults }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await,Future}
 import scala.util.{ Try, Success, Failure }
-import scala.xml.Elem
 
+class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
+  var datasets = concurrent.TrieMap[String,CDSDataset]()
 
-//object cds2PluginExecutionManager extends PluginExecutionManager {
-//  val cds2ExecutionManager = new CDS2ExecutionManager()
-//
-//  override def execute( process_name: String, datainputs: Map[String, Seq[Map[String, Any]]], run_args: Map[String,Any] ): xml.Elem = {
-//    val request = TaskRequest( process_name, datainputs )
-//    cds2ExecutionManager.execute( request, run_args )
-//  }
-//}
+  def getDataset(data_source: DataSource): CDSDataset = {
+    val datasetName = data_source.collection.toLowerCase
+    Collections.CreateIP.get(datasetName) match {
+      case Some(collection) =>
+        val dataset_uid = collection.getUri(data_source.name)
+        datasets.get(dataset_uid) match {
+          case Some(dataset) => dataset
+          case None =>
+            val dataset: CDSDataset = CDSDataset.load(datasetName, collection, data_source.name)
+            datasets += dataset_uid -> dataset
+            dataset
+        }
+      case None =>
+        throw new Exception("Undefined collection for dataset " + data_source.name + ", collection = " + data_source.collection)
+    }
+  }
+}
 
-object collectionDataManager extends DataManager( new CollectionDataLoader() )
+object collectionDataCache extends CollectionDataCacheMgr()
 
 class CDS2ExecutionManager {
+  val collectionDataManager = new DataManager( collectionDataCache )
   val logger = LoggerFactory.getLogger(this.getClass)
   private var futureResult: Option[Future[xml.Elem]] = None
   val processAsyncResult: PartialFunction[Try[xml.Elem],Unit] = {
@@ -55,6 +64,14 @@ class CDS2ExecutionManager {
     getKernel( toks.dropRight(1).mkString("."), toks.last )
   }
 
+  def fatal(err: Exception): xml.Elem = {
+    logger.error( "\nError Executing Kernel: %s\n".format(err.getMessage) )
+    val sw = new StringWriter
+    err.printStackTrace(new PrintWriter(sw))
+    logger.error( sw.toString )
+    <Error> { err.getMessage } </Error>
+  }
+
   def futureExecute( request: TaskRequest, run_args: Map[String,String] ): Future[xml.Elem] = Future {
     try {
       for (data_container <- request.variableMap.values; if data_container.isSource) {
@@ -62,12 +79,12 @@ class CDS2ExecutionManager {
       }
       executeWorkflows(request, run_args).toXml
     } catch {
-      case err: Exception => <Error> { err.toString } </Error>
+      case err: Exception => fatal(err)
     }
   }
 
   def execute( request: TaskRequest, run_args: Map[String,String] ): xml.Elem = {
-    logger.info("Execute { request: " + request.toString + ", runargs: " + run_args.toString + "}")
+    logger.info("Execute { runargs: " + run_args.toString + ",  request: " + request.toString + " }")
     val async = run_args.getOrElse("async", "false").toBoolean
     futureResult = Option( this.futureExecute( request, run_args ) )
     if(async) { asyncResult;  <result> </result> }
@@ -107,27 +124,6 @@ class CDS2ExecutionManager {
   }
 }
 
-class CollectionDataLoader extends DataLoader {
-  var datasets = mutable.Map[String,CDSDataset]()
-
-  def getDataset(data_source: DataSource): CDSDataset = {
-    val datasetName = data_source.collection.toLowerCase
-    Collections.CreateIP.get(datasetName) match {
-      case Some(collection) =>
-        val dataset_uid = collection.getUri(data_source.name)
-        datasets.get(dataset_uid) match {
-          case Some(dataset) => dataset
-          case None =>
-            val dataset: CDSDataset = CDSDataset.load(datasetName, collection, data_source.name)
-            datasets += dataset_uid -> dataset
-            dataset
-        }
-      case None =>
-        throw new Exception("Undefined collection for dataset " + data_source.name + ", collection = " + data_source.collection)
-    }
-  }
-}
-
 object SampleTaskRequests {
 
   def getAveTimeseries: TaskRequest = {
@@ -162,6 +158,15 @@ object SampleTaskRequests {
     TaskRequest( "CDS.workflow", dataInputs )
   }
 
+  def getSubsetRequest: TaskRequest = {
+    val dataInputs = Map(
+      "domain" -> List( Map("name" -> "d0", "lat" -> Map("start" -> 45, "end" -> 45, "system" -> "values"), "lon" -> Map("start" -> 30, "end" -> 30, "system" -> "values"), "lev" -> Map("start" -> 3, "end" -> 3, "system" -> "indices")),
+        Map("name" -> "d1", "time" -> Map("start" -> 3, "end" -> 3, "system" -> "indices") ) ),
+      "variable" -> List( Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "ta:v0", "domain" -> "d0") ),
+      "operation" -> List(Map("unparsed" -> "( v0, domain:d1 )" )) )
+    TaskRequest( "CDS.subset", dataInputs )
+  }
+
   def getTimeSliceAnomaly: TaskRequest = {
     val dataInputs = Map(
       "domain" -> List( Map("name" -> "d0", "lat" -> Map("start" -> 10, "end" -> 10, "system" -> "values"), "lon" -> Map("start" -> 10, "end" -> 10, "system" -> "values"), "lev" -> Map("start" -> 8, "end" -> 8, "system" -> "indices"))),
@@ -185,6 +190,14 @@ object SampleTaskRequests {
     TaskRequest( "CDS.average", dataInputs )
   }
 
+  def getAnomalyTest: TaskRequest = {
+    val dataInputs = Map(
+      "domain" ->  List(Map("name" -> "d0", "lat" -> Map("start" -> 10, "end" -> 10, "system" -> "values"), "lon" -> Map("start" -> 10, "end" -> 10, "system" -> "values"), "lev" -> Map("start" -> 8, "end" -> 8, "system" -> "indices"))),
+      "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "hur:v0", "domain" -> "d0")),
+      "operation" -> List(Map("unparsed" -> "(v0,axes:t)")))
+    TaskRequest( "CDS.anomaly", dataInputs )
+  }
+
   def getAveArray: TaskRequest = {
     import nasa.nccs.esgf.process.DomainAxis.Type._
     val workflows = List[WorkflowContainer]( new WorkflowContainer( operations = List( new OperationContainer( identifier = "CDS.average~ivar#1",  name ="CDS.average", result = "ivar#1", inputs = List("v0"), optargs = Map("axis" -> "xy") )  ) ) )
@@ -193,17 +206,10 @@ object SampleTaskRequests {
     new TaskRequest( "CDS.average", variableMap, domainMap, workflows )
   }
 
-  def getCacheChunk: TaskRequest = {
-    import nasa.nccs.esgf.process.DomainAxis.Type._
-    val variableMap = Map[String,DataContainer]( "v0" -> new DataContainer( uid="v0", source = Some(new DataSource( name = "hur", collection = "merra/mon/atmos", domain = "d0" ) ) ) )
-    val domainMap = Map[String,DomainContainer]( "d0" -> new DomainContainer( name = "d0", axes = cdsutils.flatlist( DomainAxis(Lev,1,1) ) ) )
-    new TaskRequest( "CWT.cache",  variableMap, domainMap )
-  }
-
 }
 
 object executionTest extends App {
-  val request = SampleTaskRequests.getTimeSliceAnomaly
+  val request = SampleTaskRequests.getCreateVRequest
   val async = false
   val run_args = Map( "async" -> async.toString )
   val cds2ExecutionManager = new CDS2ExecutionManager()
