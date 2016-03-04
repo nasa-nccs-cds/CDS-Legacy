@@ -24,7 +24,7 @@ class CDS extends KernelModule with KernelTools {
       val inputSubsets: List[PartitionedFragment] =  context.fragments
       val optargs: Map[String,String] =  context.args
       val input_array = inputSubsets(0).data
-      val axisSpecs = inputSubsets(0).axisSpecs
+      val axisSpecs = context.getAxisSpecs
       val axes = axisSpecs.getAxes
       val t0 = System.nanoTime
       val mean_val = input_array.rawmean( axes:_* )
@@ -41,7 +41,7 @@ class CDS extends KernelModule with KernelTools {
 
     def execute(context: ExecutionContext ): ExecutionResult = {
       val input_array = context.fragments(0).data
-      val axes = context.fragments(0).axisSpecs.getAxes
+      val axes = context.getAxisSpecs.getAxes
       val t10 = System.nanoTime
       val mean_val_masked = input_array.mean( axes:_* )
       val t11 = System.nanoTime
@@ -56,13 +56,13 @@ class CDS extends KernelModule with KernelTools {
 
     def execute(context: ExecutionContext ): ExecutionResult = {
       val input = context.fragments(0)
-      val axes = context.fragments(0).axisSpecs.getAxes
+      val axes = context.getAxisSpecs.getAxes
       val t0 = System.nanoTime
       def input_uids = context.getDataSources.keySet
       assert( input_uids.size == 1, "Wrong number of arguments to 'subset': %d ".format(input_uids.size) )
       val result = context.args.get("domain") match {
         case None => input.data
-        case Some(domain_id) => context.getSubset( input_uids.head, domain_id ).data
+        case Some(domain_id) => context.dataManager.getSubset( input_uids.head, context.getFragmentSpec(input_uids.head), context.getDomain(domain_id) ).data
       }
       val t1 = System.nanoTime
       println("Subset: time = %.4f s, result = %s, value = [ %s ]".format( (t1-t0)/1.0E9, result.toString, result.data.mkString(",") ) )
@@ -77,7 +77,7 @@ class CDS extends KernelModule with KernelTools {
 
     def execute( context: ExecutionContext ): ExecutionResult = {
       val input_array = context.fragments(0).data
-      val axes = context.fragments(0).axisSpecs.getAxes
+      val axes = context.getAxisSpecs.getAxes
       val t10 = System.nanoTime
       val binFactory: BinnedArrayFactory = context.binArrayOpt match {
         case None => throw new Exception( "Must include bin spec in bin operation")
@@ -100,7 +100,7 @@ class CDS extends KernelModule with KernelTools {
       val inputSubsets: List[PartitionedFragment] =  context.fragments
       val optargs: Map[String,String] =  context.args
       val input_array = inputSubsets(0).data
-      val axisSpecs = inputSubsets(0).axisSpecs
+      val axisSpecs = context.getAxisSpecs
       val t10 = System.nanoTime
       val mean_val_masked = input_array.mean( axisSpecs.getAxes:_* )
       val bc_mean_val_masked = mean_val_masked.broadcast( input_array.shape:_* )

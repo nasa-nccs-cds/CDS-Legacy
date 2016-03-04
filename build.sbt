@@ -14,7 +14,7 @@ lazy val root = project in file(".")
 
 resolvers += "Unidata maven repository" at "http://artifacts.unidata.ucar.edu/content/repositories/unidata-releases"
 
-resolvers ++= Seq( "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases" )
+resolvers ++= Seq( "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases", "spray repo" at "http://repo.spray.io" )
 
 libraryDependencies ++= Dependencies.scala
 
@@ -23,6 +23,8 @@ libraryDependencies ++= Dependencies.ndarray
 libraryDependencies ++= Dependencies.kernels
 
 libraryDependencies ++= Dependencies.spark
+
+libraryDependencies ++= Dependencies.cache
 
 
 

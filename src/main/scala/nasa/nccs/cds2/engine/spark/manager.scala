@@ -16,22 +16,22 @@ class RDDataManager( dataLoader: DataLoader ) extends DataManager( dataLoader ) 
   val collectionRDDataManager = new RDDataManager( collectionRDDDataCache )
   var prdds = mutable.Map[String, RDD[PartitionedFragment]]()
 
-  def loadRDData(cdsContext: CDSparkContext, data_container: DataContainer, domain_container: DomainContainer, nPart: Int): RDD[PartitionedFragment] = {
-    val uid: String = data_container.uid
-    val data_source: DataSource = data_container.getSource
-    val axisConf: List[OperationSpecs] = data_container.getOpSpecs
-    prdds.get(uid) match {
-      case Some(prdd) => prdd
-      case None =>
-        val dataset: cdm.CDSDataset = dataLoader.getDataset(data_source)
-        val variable = cdsutils.time(logger, "Load Variable " + uid)(dataset.loadVariable(data_source.name))
-        val partAxis = 't' // TODO: Compute this
-      val pRDD = cdsContext.makeFragmentRDD(variable, domain_container.axes, partAxis, nPart, axisConf)
-        prdds += uid -> pRDD
-        logger.info("Loaded variable %s (%s:%s) subset data, shape = %s ".format(uid, data_source.collection, data_source.name, "")) // pRDD.shape.toString) )
-        pRDD
-    }
-  }
+//  def loadRDData(cdsContext: CDSparkContext, data_container: DataContainer, domain_container: DomainContainer, nPart: Int): RDD[PartitionedFragment] = {
+//    val uid: String = data_container.uid
+//    val data_source: DataSource = data_container.getSource
+//    val axisConf: List[OperationSpecs] = data_container.getOpSpecs
+//    prdds.get(uid) match {
+//      case Some(prdd) => prdd
+//      case None =>
+//        val dataset: cdm.CDSDataset = dataLoader.getDataset(data_source.collection,data_source.name )
+//        val variable = cdsutils.time(logger, "Load Variable " + uid)(dataset.loadVariable(data_source.name))
+//        val partAxis = 't' // TODO: Compute this
+//      val pRDD = cdsContext.makeFragmentRDD(variable, domain_container.axes, partAxis, nPart, axisConf)
+//        prdds += uid -> pRDD
+//        logger.info("Loaded variable %s (%s:%s) subset data, shape = %s ".format(uid, data_source.collection, data_source.name, "")) // pRDD.shape.toString) )
+//        pRDD
+//    }
+//  }
 }
 
 //class CDSparkExecutionManager( val cdsContext: CDSparkContext ) extends CDS2ExecutionManager {

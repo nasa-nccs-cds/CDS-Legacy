@@ -36,6 +36,8 @@ object Library {
   val breeze         = "org.scalanlp"      %% "breeze"          % "0.12"
   val kernelmod      = "nasa.nccs"         %% "kermodbase"      % "1.0-SNAPSHOT"
   val cdapi          = "nasa.nccs"         %% "CDAPI"           % "1.0-SNAPSHOT"
+  val sprayCache     = "io.spray"       % "spray-caching_2.11" % "1.3.3"
+  val sprayUtil      = "io.spray"       % "spray-util_2.11"    % "1.3.3"
 }
 
 object Dependencies {
@@ -52,10 +54,16 @@ object Dependencies {
 
   val spark = Seq( sparkCore )
 
+  val cache = Seq( sprayCache, sprayUtil )
+
   val ndarray = Seq( nd4s, nd4j )
 
   val kernels = Seq( kernelmod, cdapi )
 }
+
+//<groupId>com.googlecode.concurrentlinkedhashmap</groupId>
+//  <artifactId>concurrentlinkedhashmap-lru</artifactId>
+//  <version>1.4.2</version>
 
 
 

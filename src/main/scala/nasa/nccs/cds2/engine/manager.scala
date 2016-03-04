@@ -1,5 +1,6 @@
 package nasa.nccs.cds2.engine
 import java.io.{PrintWriter, StringWriter}
+import nasa.nccs.cdapi.cdm
 import nasa.nccs.cdapi.cdm._
 import nasa.nccs.cds2.loaders.Collections
 import nasa.nccs.esgf.process._
@@ -11,27 +12,80 @@ import nasa.nccs.cds2.kernels.kernelManager
 import nasa.nccs.cdapi.kernels.{ Kernel, KernelModule, ExecutionResult, ExecutionContext, ExecutionResults }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Await,Future}
+import scala.concurrent.{Promise, Await, Future}
 import scala.util.{ Try, Success, Failure }
+import spray.caching._
 
 class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
+  val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
+  val fragmentCache: Cache[PartitionedFragment] = LruCache()
+  val datasetCache: Cache[CDSDataset] = LruCache()
+  val variableCache: Cache[CDSVariable] = LruCache()
   var datasets = concurrent.TrieMap[String,CDSDataset]()
 
-  def getDataset(data_source: DataSource): CDSDataset = {
-    val datasetName = data_source.collection.toLowerCase
+  def makeKey( collection: String, varName: String ) = collection + ":" + varName
+
+  def extractFuture[T]( key: String, result: Option[Try[T]]): T = result match {
+    case Some(tryVal) => tryVal match { case Success(x) => x; case Failure(t) => throw t }
+    case None => throw new Exception(s"Error getting cache value $key")
+  }
+
+  def getDatasetFuture( collection: String, varName: String ): Future[CDSDataset] = {
+    datasetCache( makeKey( collection, varName ) ) { produceDataset( collection, varName ) }
+  }
+  def getDataset( collection: String, varName: String ): CDSDataset = {
+    val futureDataset: Future[CDSDataset] = getDatasetFuture( collection, varName )
+    Await.result( futureDataset, Duration.Inf )
+  }
+
+  private def produceDataset( collection: String, varName: String )(p: Promise[CDSDataset]): Unit = {
+    val datasetName = collection.toLowerCase
     Collections.CreateIP.get(datasetName) match {
       case Some(collection) =>
-        val dataset_uid = collection.getUri(data_source.name)
+        val dataset_uid = collection.getUri(varName)
         datasets.get(dataset_uid) match {
           case Some(dataset) => dataset
           case None =>
-            val dataset: CDSDataset = CDSDataset.load(datasetName, collection, data_source.name)
+            val dataset: CDSDataset = CDSDataset.load( datasetName, collection, varName )
             datasets += dataset_uid -> dataset
-            dataset
+            p.success(dataset)
         }
-      case None =>
-        throw new Exception("Undefined collection for dataset " + data_source.name + ", collection = " + data_source.collection)
+      case None => p.failure( new Exception("Undefined collection for dataset " + varName + ", collection = " + collection) )
     }
+  }
+
+  private def promiseVariable(collection: String, varName: String)(p: Promise[CDSVariable]): Unit = {
+    getDatasetFuture(collection, varName) onComplete {
+      case Success(dataset) =>
+        try {  p.success( dataset.loadVariable(varName) )  }
+        catch { case e: Exception => p.failure(e) }
+      case Failure(t) => p.failure(t)
+    }
+  }
+  def getVariableFuture( collection: String, varName: String ): Future[CDSVariable] = {
+    variableCache( makeKey( collection, varName ) ) { promiseVariable( collection, varName ) }
+  }
+  def getVariable( collection: String, varName: String ): CDSVariable = {
+    val futureVariable: Future[CDSVariable] = getVariableFuture( collection, varName )
+    Await.result( futureVariable, Duration.Inf )
+  }
+
+  private def promiseFragment( fragSpec: DataFragmentSpec )(p: Promise[PartitionedFragment]): Unit = {
+    getVariableFuture( fragSpec.collection, fragSpec.varname )  onComplete {
+      case Success(variable) =>
+        try {  p.success( variable.loadRoi( fragSpec ) )  }
+        catch { case e: Exception => p.failure(e) }
+      case Failure(t) => p.failure(t)
+    }
+  }
+  def getFragmentFuture( fragSpec: DataFragmentSpec  ): Future[PartitionedFragment] = {
+    fragmentCache( fragSpec ) { promiseFragment( fragSpec ) }
+  }
+  def getFragment( fragSpec: DataFragmentSpec  ): PartitionedFragment = {
+    val futureFragment: Future[PartitionedFragment] = getFragmentFuture( fragSpec )
+    val fragment = Await.result( futureFragment, Duration.Inf )
+    logger.info("Loaded variable (%s:%s) subset data, shape = %s ".format(fragSpec.collection, fragSpec.varname, fragment.shape.toString))
+    fragment
   }
 }
 
