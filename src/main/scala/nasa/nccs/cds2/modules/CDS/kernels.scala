@@ -1,6 +1,6 @@
 package nasa.nccs.cds2.modules.CDS
 
-import nasa.nccs.cdapi.cdm.{BinnedArrayFactory, aveSliceAccumulator, PartitionedFragment}
+import nasa.nccs.cdapi.cdm.{KernelDataInput, BinnedArrayFactory, aveSliceAccumulator, PartitionedFragment}
 import nasa.nccs.cdapi.kernels._
 import nasa.nccs.cds2.kernels.KernelTools
 import nasa.nccs.esgf.process.DataSource
@@ -21,10 +21,10 @@ class CDS extends KernelModule with KernelTools {
     override val description = "Raw Average over Input Fragment"
 
     def execute( context: ExecutionContext ): ExecutionResult = {
-      val inputSubsets: List[PartitionedFragment] =  context.fragments
+      val inputSubsets: List[KernelDataInput] =  context.fragments
       val optargs: Map[String,String] =  context.args
-      val input_array = inputSubsets(0).data
-      val axisSpecs = context.getAxisSpecs
+      val input_array = inputSubsets(0).dataFragment.data
+      val axisSpecs = inputSubsets(0).axisSpecs
       val axes = axisSpecs.getAxes
       val t0 = System.nanoTime
       val mean_val = input_array.rawmean( axes:_* )
@@ -40,8 +40,11 @@ class CDS extends KernelModule with KernelTools {
     override val description = "Average over Input Fragment"
 
     def execute(context: ExecutionContext ): ExecutionResult = {
-      val input_array = context.fragments(0).data
-      val axes = context.getAxisSpecs.getAxes
+      val inputSubsets: List[KernelDataInput] =  context.fragments
+      val optargs: Map[String,String] =  context.args
+      val input_array = inputSubsets(0).dataFragment.data
+      val axisSpecs = inputSubsets(0).axisSpecs
+      val axes = axisSpecs.getAxes
       val t10 = System.nanoTime
       val mean_val_masked = input_array.mean( axes:_* )
       val t11 = System.nanoTime
@@ -55,13 +58,16 @@ class CDS extends KernelModule with KernelTools {
     override val description = "Average over Input Fragment"
 
     def execute(context: ExecutionContext ): ExecutionResult = {
-      val input = context.fragments(0)
-      val axes = context.getAxisSpecs.getAxes
+      val inputSubsets: List[KernelDataInput] =  context.fragments
+      val optargs: Map[String,String] =  context.args
+      val input_array = inputSubsets(0).dataFragment.data
+      val axisSpecs = inputSubsets(0).axisSpecs
+      val axes = axisSpecs.getAxes
       val t0 = System.nanoTime
       def input_uids = context.getDataSources.keySet
       assert( input_uids.size == 1, "Wrong number of arguments to 'subset': %d ".format(input_uids.size) )
       val result = context.args.get("domain") match {
-        case None => input.data
+        case None => input_array
         case Some(domain_id) => context.dataManager.getSubset( input_uids.head, context.getFragmentSpec(input_uids.head), context.getDomain(domain_id) ).data
       }
       val t1 = System.nanoTime
@@ -76,8 +82,11 @@ class CDS extends KernelModule with KernelTools {
     override val description = "Binnins over Input Fragment"
 
     def execute( context: ExecutionContext ): ExecutionResult = {
-      val input_array = context.fragments(0).data
-      val axes = context.getAxisSpecs.getAxes
+      val inputSubsets: List[KernelDataInput] =  context.fragments
+      val optargs: Map[String,String] =  context.args
+      val input_array = inputSubsets(0).dataFragment.data
+      val axisSpecs = inputSubsets(0).axisSpecs
+      val axes = axisSpecs.getAxes
       val t10 = System.nanoTime
       val binFactory: BinnedArrayFactory = context.binArrayOpt match {
         case None => throw new Exception( "Must include bin spec in bin operation")
@@ -97,10 +106,11 @@ class CDS extends KernelModule with KernelTools {
     override val description = "Anomaly over Input Fragment"
 
     def execute(context: ExecutionContext ): ExecutionResult = {
-      val inputSubsets: List[PartitionedFragment] =  context.fragments
+      val inputSubsets: List[KernelDataInput] =  context.fragments
       val optargs: Map[String,String] =  context.args
-      val input_array = inputSubsets(0).data
-      val axisSpecs = context.getAxisSpecs
+      val input_array = inputSubsets(0).dataFragment.data
+      val axisSpecs = inputSubsets(0).axisSpecs
+      val axes = axisSpecs.getAxes
       val t10 = System.nanoTime
       val mean_val_masked = input_array.mean( axisSpecs.getAxes:_* )
       val bc_mean_val_masked = mean_val_masked.broadcast( input_array.shape:_* )
