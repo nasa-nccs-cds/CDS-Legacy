@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory
 import scala.collection.{concurrent, mutable}
 import nasa.nccs.utilities.cdsutils
 import nasa.nccs.cds2.kernels.kernelManager
-import nasa.nccs.cdapi.kernels.{ Kernel, KernelModule, ExecutionResult, ExecutionContext, ExecutionResults }
+import nasa.nccs.cdapi.kernels._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Promise, Await, Future}
@@ -22,43 +22,71 @@ class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
   private val datasetCache: Cache[CDSDataset] = LruCache()
   private val variableCache: Cache[CDSVariable] = LruCache()
 
-  def makeKey( collection: String, varName: String ) = collection + ":" + varName
+  def makeKey(collection: String, varName: String) = collection + ":" + varName
 
-  def extractFuture[T]( key: String, result: Option[Try[T]]): T = result match {
-    case Some(tryVal) => tryVal match { case Success(x) => x; case Failure(t) => throw t }
+  def extractFuture[T](key: String, result: Option[Try[T]]): T = result match {
+    case Some(tryVal) => tryVal match {
+      case Success(x) => x;
+      case Failure(t) => throw t
+    }
     case None => throw new Exception(s"Error getting cache value $key")
   }
 
-  def getDatasetFuture( collection: String, varName: String ): Future[CDSDataset] = {
-    datasetCache( makeKey( collection, varName ) ){ produceDataset( collection, varName ) _  }
+  def getDatasetFuture(collection: String, varName: String): Future[CDSDataset] = {
+    datasetCache(makeKey(collection, varName)) {
+      produceDataset(collection, varName) _
+    }
   }
-  def getDataset( collection: String, varName: String ): CDSDataset = {
-    val futureDataset: Future[CDSDataset] = getDatasetFuture( collection, varName )
-    Await.result( futureDataset, Duration.Inf )
+
+  def getDataset(collection: String, varName: String): CDSDataset = {
+    val futureDataset: Future[CDSDataset] = getDatasetFuture(collection, varName)
+    Await.result(futureDataset, Duration.Inf)
   }
-  private def produceDataset( collection: String, varName: String )(p: Promise[CDSDataset]): Unit = {
+
+  private def produceDataset(collection: String, varName: String)(p: Promise[CDSDataset]): Unit = {
     val datasetName = collection.toLowerCase
     Collections.CreateIP.get(datasetName) match {
-      case Some(collection) => p.success( CDSDataset.load( datasetName, collection, varName ) )
-      case None => p.failure( new Exception("Undefined collection for dataset " + varName + ", collection = " + collection) )
+      case Some(collection) => p.success(CDSDataset.load(datasetName, collection, varName))
+      case None => p.failure(new Exception("Undefined collection for dataset " + varName + ", collection = " + collection))
     }
   }
 
   private def promiseVariable(collection: String, varName: String)(p: Promise[CDSVariable]): Unit = {
     getDatasetFuture(collection, varName) onComplete {
       case Success(dataset) =>
-        try {  p.success( dataset.loadVariable(varName) )  }
-        catch { case e: Exception => p.failure(e) }
+        try {
+          p.success(dataset.loadVariable(varName))
+        }
+        catch {
+          case e: Exception => p.failure(e)
+        }
       case Failure(t) => p.failure(t)
     }
   }
-  def getVariableFuture( collection: String, varName: String ): Future[CDSVariable] = {
-    variableCache( makeKey( collection, varName ) ) { promiseVariable( collection, varName ) _ }
+
+  def getVariableFuture(collection: String, varName: String): Future[CDSVariable] = {
+    variableCache(makeKey(collection, varName)) {
+      promiseVariable(collection, varName) _
+    }
   }
-  def getVariable( collection: String, varName: String ): CDSVariable = {
-    val futureVariable: Future[CDSVariable] = getVariableFuture( collection, varName )
-    Await.result( futureVariable, Duration.Inf )
+
+  def getVariable(collection: String, varName: String): CDSVariable = {
+    val futureVariable: Future[CDSVariable] = getVariableFuture(collection, varName)
+    Await.result(futureVariable, Duration.Inf)
   }
+
+  def getVariable(fragSpec: DataFragmentSpec): CDSVariable = getVariable(fragSpec.collection, fragSpec.varname)
+
+  private def cutExistingFragment(fragSpec: DataFragmentSpec): Option[PartitionedFragment] = findLargestEnclosingFragSpec(fragSpec) match {
+    case Some(enclosingFragSpec: DataFragmentSpec) => getExistingFragment(enclosingFragSpec) match {
+      case Some(fragmentFuture) =>
+        val fragment = Await.result(fragmentFuture, Duration.Inf)
+        Some( fragment.cutNewSubset(fragSpec.roi) )
+      case None => cutExistingFragment(fragSpec)
+    }
+    case None => None
+  }
+
 
   private def promiseFragment( fragSpec: DataFragmentSpec )(p: Promise[PartitionedFragment]): Unit = {
     getVariableFuture( fragSpec.collection, fragSpec.varname )  onComplete {
@@ -68,28 +96,52 @@ class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
       case Failure(t) => p.failure(t)
     }
   }
-  def getFragmentFuture( fragSpec: DataFragmentSpec  ): Future[PartitionedFragment] = {
-    fragmentCache( fragSpec ) { promiseFragment( fragSpec ) _ }
-  }
-  def getFragment( fragSpec: DataFragmentSpec  ): PartitionedFragment = {
-    val futureFragment: Future[PartitionedFragment] = getFragmentFuture( fragSpec )
-    val fragment = Await.result( futureFragment, Duration.Inf )
-    logger.info("Loaded variable (%s:%s) subset data, shape = %s ".format(fragSpec.collection, fragSpec.varname, fragment.shape.toString))
-    fragment
+
+  private def clearRedundantFragments( fragSpec: DataFragmentSpec ) = findEnclosedFragSpecs(fragSpec).foreach( fragmentCache.remove(_) )
+
+  private def getFragmentFuture( fragSpec: DataFragmentSpec  ): Future[PartitionedFragment] = {
+    val fragFuture = fragmentCache( fragSpec ) { promiseFragment( fragSpec ) _ }
+    fragFuture onComplete { case Success(fragment) => clearRedundantFragments( fragSpec ); case Failure(t) => Unit }
+    fragFuture
   }
 
-  def getFragmentsForVariable( collection: String, varName: String ): Set[DataFragmentSpec] = fragmentCache.keys.filter(
+  def getFragment( fragSpec: DataFragmentSpec  ): PartitionedFragment = {
+    cutExistingFragment(fragSpec) match {
+      case Some( fragment ) => fragment
+      case None =>
+        val fragmentFuture = getFragmentFuture( fragSpec )
+        logger.info("Loaded variable (%s:%s) subset data, section = %s ".format(fragSpec.collection, fragSpec.varname, fragSpec.roi ))
+        Await.result( fragmentFuture, Duration.Inf )
+    }
+  }
+
+  def getFragmentAsync( fragSpec: DataFragmentSpec  ): Future[PartitionedFragment] = {
+    cutExistingFragment(fragSpec) match {
+      case Some( fragment ) => Future { fragment }
+      case None => getFragmentFuture( fragSpec )
+    }
+  }
+
+  def getExistingFragment( fragSpec: DataFragmentSpec  ): Option[Future[PartitionedFragment]] = fragmentCache.get( fragSpec )
+
+  def getFragSpecsForVariable( collection: String, varName: String ): Set[DataFragmentSpec] = fragmentCache.keys.filter(
     _ match {
       case frag: DataFragmentSpec => frag.sameVariable(collection,varName)
       case x => logger.warn("Unexpected fragment key type: " + x.getClass.getName); false
     }).asInstanceOf[Set[DataFragmentSpec]]
 
-  def findEnclosingFragment(targetFragSpec: DataFragmentSpec): Option[DataFragmentSpec] = {
-    val variableFrags = getFragmentsForVariable( targetFragSpec.collection, targetFragSpec.varname )
-    variableFrags.filter( _.roi.contains(targetFragSpec.roi) ).size match {
-      case 0 => None;
-      case _ => Some( variableFrags.minBy( _.roi.computeSize() ) )
-    }
+  def findEnclosingFragSpecs(targetFragSpec: DataFragmentSpec): Set[DataFragmentSpec] = {
+    val variableFrags = getFragSpecsForVariable( targetFragSpec.collection, targetFragSpec.varname )
+    variableFrags.filter( _.roi.contains(targetFragSpec.roi) )
+  }
+  def findEnclosedFragSpecs(targetFragSpec: DataFragmentSpec): Set[DataFragmentSpec] = {
+    val variableFrags = getFragSpecsForVariable( targetFragSpec.collection, targetFragSpec.varname )
+    variableFrags.filter( fragSpec => targetFragSpec.roi.contains( fragSpec.roi ) )
+  }
+
+  def findLargestEnclosingFragSpec(targetFragSpec: DataFragmentSpec): Option[DataFragmentSpec] = {
+    val enclosingFragments = findEnclosingFragSpecs(targetFragSpec)
+    if ( enclosingFragments.size== 0 ) None else Some( enclosingFragments.maxBy( _.roi.computeSize() ) )
   }
 }
 
@@ -98,7 +150,7 @@ object collectionDataCache extends CollectionDataCacheMgr()
 class CDS2ExecutionManager {
   val collectionDataManager = new DataManager( collectionDataCache )
   val logger = LoggerFactory.getLogger(this.getClass)
-  private var futureResult: Option[Future[xml.Elem]] = None
+  var currentlyExecuting: Option[Future[xml.Elem]] = None
   val processAsyncResult: PartialFunction[Try[xml.Elem],Unit] = {
     case n @ Success(_) => println( "Process Completed: " + n.toString )
     case e @ Failure(_) => println( "Process Error: " + e.toString )
@@ -132,7 +184,7 @@ class CDS2ExecutionManager {
 
   def futureExecute( request: TaskRequest, run_args: Map[String,String] ): Future[xml.Elem] = Future {
     try {
-      for (data_container <- request.variableMap.values; if data_container.isSource) {
+      for (data_container: DataContainer <- request.variableMap.values; if data_container.isSource) {
         collectionDataManager.loadVariableData(data_container, request.getDomain(data_container.getSource))
       }
       executeWorkflows(request, run_args).toXml
@@ -144,22 +196,19 @@ class CDS2ExecutionManager {
   def execute( request: TaskRequest, run_args: Map[String,String] ): xml.Elem = {
     logger.info("Execute { runargs: " + run_args.toString + ",  request: " + request.toString + " }")
     val async = run_args.getOrElse("async", "false").toBoolean
-    futureResult = Option( this.futureExecute( request, run_args ) )
-    if(async) { asyncResult;  <result> </result> }
-    else awaitResult
-  }
-
-  def asyncResult: Unit = {
-    futureResult match {
-      case None => Unit
-      case Some( result ) => result onComplete processAsyncResult
-    }
+    val futureResult = this.futureExecute( request, run_args )
+    if(async) {
+      currentlyExecuting = Some( futureResult )
+      futureResult onComplete processAsyncResult
+      <result> </result>
+    } else
+      Await.result( futureResult, Duration.Inf )
   }
 
   def awaitResult: xml.Elem = {
-    futureResult match {
+    currentlyExecuting match {
       case None => <Error> { "No result" } </Error>
-      case Some( result ) => Await.result( result, Duration.Inf )
+      case Some( futureResult ) => Await.result( futureResult, Duration.Inf )
     }
   }
 
@@ -175,7 +224,7 @@ class CDS2ExecutionManager {
     getKernel( operation.name.toLowerCase ).execute( getExecutionContext(operation, domainMap, run_args) )
   }
   def getExecutionContext( operation: OperationContainer, domainMap: Map[String,DomainContainer], run_args: Map[String, String] ): ExecutionContext = {
-    val fragments: List[PartitionedFragment] = operation.inputs.map(collectionDataManager.getVariableData(_))
+    val fragments: List[KernelDataInput] = for( uid <- operation.inputs ) yield new KernelDataInput( collectionDataManager.getVariableData(uid), collectionDataManager.getAxisSpecs(uid) )
     val binArrayOpt = collectionDataManager.getBinnedArrayFactory( operation )
     val args = operation.optargs ++ run_args
     new ExecutionContext( fragments, binArrayOpt, domainMap, collectionDataManager, args )
@@ -267,7 +316,7 @@ object SampleTaskRequests {
 }
 
 object executionTest extends App {
-  val request = SampleTaskRequests.getCreateVRequest
+  val request = SampleTaskRequests.getCacheRequest
   val async = false
   val run_args = Map( "async" -> async.toString )
   val cds2ExecutionManager = new CDS2ExecutionManager()
