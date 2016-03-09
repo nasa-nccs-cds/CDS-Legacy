@@ -46,7 +46,11 @@ class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
   private def produceDataset(collection: String, varName: String)(p: Promise[CDSDataset]): Unit = {
     val datasetName = collection.toLowerCase
     Collections.CreateIP.get(datasetName) match {
-      case Some(collection) => p.success(CDSDataset.load(datasetName, collection, varName))
+      case Some(collection) => {
+        val dataset = CDSDataset.load(datasetName, collection, varName)
+        logger.info("Completed reading dataset (%s:%s) ".format( collection, varName ))
+        p.success(dataset)
+      }
       case None => p.failure(new Exception("Undefined collection for dataset " + varName + ", collection = " + collection))
     }
   }
@@ -55,7 +59,9 @@ class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
     getDatasetFuture(collection, varName) onComplete {
       case Success(dataset) =>
         try {
-          p.success(dataset.loadVariable(varName))
+          val variable = dataset.loadVariable(varName)
+          logger.info("Completed reading variable %s ".format( varName ))
+          p.success(variable)
         }
         catch {
           case e: Exception => p.failure(e)
@@ -91,8 +97,12 @@ class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
   private def promiseFragment( fragSpec: DataFragmentSpec )(p: Promise[PartitionedFragment]): Unit = {
     getVariableFuture( fragSpec.collection, fragSpec.varname )  onComplete {
       case Success(variable) =>
-        try {  p.success( variable.loadRoi( fragSpec ) )  }
-        catch { case e: Exception => p.failure(e) }
+        try {
+          val t0 = System.nanoTime()
+          val result = variable.loadRoi( fragSpec )
+          logger.info("Completed variable (%s:%s) subset data input in time %.4f sec, section = %s ".format(fragSpec.collection, fragSpec.varname, (System.nanoTime()-t0)/1.0E9, fragSpec.roi ))
+          p.success( result )
+        } catch { case e: Exception => p.failure(e) }
       case Failure(t) => p.failure(t)
     }
   }
@@ -110,8 +120,9 @@ class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
       case Some( fragment ) => fragment
       case None =>
         val fragmentFuture = getFragmentFuture( fragSpec )
-        logger.info("Loaded variable (%s:%s) subset data, section = %s ".format(fragSpec.collection, fragSpec.varname, fragSpec.roi ))
-        Await.result( fragmentFuture, Duration.Inf )
+        val result = Await.result( fragmentFuture, Duration.Inf )
+        logger.info("Loaded variable (%s:%s) existing subset data, section = %s ".format(fragSpec.collection, fragSpec.varname, fragSpec.roi ))
+        result
     }
   }
 
