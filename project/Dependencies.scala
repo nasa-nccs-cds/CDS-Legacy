@@ -35,7 +35,7 @@ object Library {
   val guava          = "com.google.guava"   % "guava"           % "18.0"
   val breeze         = "org.scalanlp"      %% "breeze"          % "0.12"
   val kernelmod      = "nasa.nccs"         %% "kermodbase"      % "1.0-SNAPSHOT"
-  val cdapi          = "nasa.nccs"         %% "CDAPI"           % "1.0-SNAPSHOT"
+  val cdapi          = "nasa.nccs"         %% "cdapi"           % "1.0-SNAPSHOT"
   val sprayCache     = "io.spray"       % "spray-caching_2.11" % "1.3.3"
   val sprayUtil      = "io.spray"       % "spray-util_2.11"    % "1.3.3"
 }
