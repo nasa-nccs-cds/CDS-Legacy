@@ -2,6 +2,7 @@ package nasa.nccs.cds2.modules.CDS
 
 import nasa.nccs.cdapi.cdm.{KernelDataInput, BinnedArrayFactory, aveSliceAccumulator, PartitionedFragment}
 import nasa.nccs.cdapi.kernels._
+import nasa.nccs.cdapi.tensors.Nd4jMaskedTensor
 import nasa.nccs.cds2.kernels.KernelTools
 import nasa.nccs.esgf.process.DataSource
 import org.nd4j.linalg.api.ndarray.INDArray
@@ -79,7 +80,7 @@ class CDS extends KernelModule with KernelTools {
   class bin extends Kernel {
     val inputs = List(Port("input fragment", "1"))
     val outputs = List(Port("result", "1"))
-    override val description = "Binnins over Input Fragment"
+    override val description = "Binning over Input Fragment"
 
     def execute( context: ExecutionContext ): ExecutionResult = {
       val inputSubsets: List[KernelDataInput] =  context.fragments
@@ -93,10 +94,10 @@ class CDS extends KernelModule with KernelTools {
         case Some(bf) => bf
       }
       assert( axes.length == 1, "Must bin over 1 axis only! Requested: " + axes.mkString(",") )
-      val binned_value = input_array.bin(axes(0),binFactory)
+      val binned_value: Option[Nd4jMaskedTensor] = input_array.bin(axes(0),binFactory)
       val t11 = System.nanoTime
       println("Binned array, time = %.4f s, result = %s".format( (t11-t10)/1.0E9, binned_value.toString ) )
-      new ExecutionResult( binned_value(0).data )
+      binned_value match { case None => throw new Exception("Empty Bins"); case Some(masked_array) => new ExecutionResult( masked_array.data ) }
     }
   }
 
