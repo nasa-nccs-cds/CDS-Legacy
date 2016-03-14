@@ -46,11 +46,10 @@ class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
   private def produceDataset(collection: String, varName: String)(p: Promise[CDSDataset]): Unit = {
     val datasetName = collection.toLowerCase
     Collections.CreateIP.get(datasetName) match {
-      case Some(collection) => {
+      case Some(collection) =>
         val dataset = CDSDataset.load(datasetName, collection, varName)
         logger.info("Completed reading dataset (%s:%s) ".format( collection, varName ))
         p.success(dataset)
-      }
       case None => p.failure(new Exception("Undefined collection for dataset " + varName + ", collection = " + collection))
     }
   }
@@ -116,9 +115,7 @@ class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
   }
 
   def getFragment( fragSpec: DataFragmentSpec  ): PartitionedFragment = {
-    cutExistingFragment(fragSpec) match {
-      case Some( fragment ) => fragment
-      case None =>
+    cutExistingFragment(fragSpec) getOrElse {
         val fragmentFuture = getFragmentFuture( fragSpec )
         val result = Await.result( fragmentFuture, Duration.Inf )
         logger.info("Loaded variable (%s:%s) existing subset data, section = %s ".format(fragSpec.collection, fragSpec.varname, fragSpec.roi ))
@@ -136,7 +133,7 @@ class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
   def loadOperationInputFuture( dataContainer: DataContainer, domain_container: DomainContainer ): Future[OperationInputSpec] = {
     val variableFuture = getVariableFuture(dataContainer.getSource.collection, dataContainer.getSource.name)
     variableFuture.flatMap( variable => {
-      val fragSpec = variable.createFragmentSpec(domain_container.axes);
+      val fragSpec = variable.createFragmentSpec(domain_container.axes)
       val axisSpecs: AxisSpecs = variable.getAxisSpecs(dataContainer.getOpSpecs)
       for (frag <- getFragmentFuture(fragSpec)) yield new OperationInputSpec(fragSpec, axisSpecs)
     })
@@ -145,7 +142,7 @@ class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
   def loadDataFragmentFuture( dataContainer: DataContainer, domain_container: DomainContainer ): Future[PartitionedFragment] = {
     val variableFuture = getVariableFuture(dataContainer.getSource.collection, dataContainer.getSource.name)
     variableFuture.flatMap( variable => {
-      val fragSpec = variable.createFragmentSpec(domain_container.axes);
+      val fragSpec = variable.createFragmentSpec(domain_container.axes)
       for (frag <- getFragmentFuture(fragSpec)) yield frag
     })
   }
@@ -169,7 +166,7 @@ class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
 
   def findEnclosingFragSpec(targetFragSpec: DataFragmentSpec, selectionCriteria: FragmentSelectionCriteria.Value ): Option[DataFragmentSpec] = {
     val enclosingFragments = findEnclosingFragSpecs(targetFragSpec)
-    if ( enclosingFragments.size== 0 ) None else Some( selectionCriteria match {
+    if ( enclosingFragments.isEmpty ) None else Some( selectionCriteria match {
       case FragmentSelectionCriteria.Smallest => enclosingFragments.minBy(_.roi.computeSize())
       case FragmentSelectionCriteria.Largest  => enclosingFragments.maxBy(_.roi.computeSize())
     } )
@@ -261,7 +258,7 @@ class CDS2ExecutionManager {
   def listProcesses(): xml.Elem = kernelManager.toXml
 
   def executeWorkflows( request: TaskRequest, run_args: Map[String,String] ): ExecutionResults = {
-    new ExecutionResults( request.workflows.map( workflow => workflow.operations.map( operation => operationExecution( operation, request.domainMap,  run_args ) ) ).flatten )
+    new ExecutionResults( request.workflows.flatMap(workflow => workflow.operations.map(operation => operationExecution(operation, request.domainMap, run_args))) )
   }
 
   def operationExecution(operation: OperationContainer, domainMap: Map[String,DomainContainer], run_args: Map[String, String]): ExecutionResult = {
@@ -364,16 +361,15 @@ object SampleTaskRequests {
     }
   }
 
-  def getFragmentSync( dataContainer: DataContainer, domain_container: DomainContainer): Option[PartitionedFragment] = {
-    val collection = dataContainer.getSource.collection
+  def getFragmentSync( dataContainer: DataContainer, domainContainer: DomainContainer): Option[PartitionedFragment] = {
+    val datasetName = dataContainer.getSource.collection.toLowerCase
     var varName = dataContainer.getSource.name
-    val datasetName = collection.toLowerCase
     Collections.CreateIP.get(datasetName) match {
       case Some(collection) =>
         val dataset = CDSDataset.load(datasetName, collection, varName)
         val variable = dataset.loadVariable(varName)
         val t0 = System.nanoTime
-        val fragSpec = variable.createFragmentSpec(domain_container.axes)
+        val fragSpec = variable.createFragmentSpec(domainContainer.axes)
         val axisSpecs: AxisSpecs = variable.getAxisSpecs(dataContainer.getOpSpecs)
         val result = variable.loadRoi( fragSpec )
         val t1 = System.nanoTime

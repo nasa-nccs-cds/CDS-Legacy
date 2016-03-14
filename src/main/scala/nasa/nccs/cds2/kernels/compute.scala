@@ -1,8 +1,7 @@
 package nasa.nccs.cds2.kernels
 
 import nasa.nccs.cdapi.kernels.DataFragment
-import nasa.nccs.cdapi.tensors.{Nd4jMaskedTensor}
-import org.nd4j.linalg.api.ndarray.INDArray
+import nasa.nccs.cdapi.tensors.Nd4jMaskedTensor
 
 trait KernelTools {
 

@@ -24,8 +24,8 @@ class CDS extends KernelModule with KernelTools {
     def execute( context: ExecutionContext ): ExecutionResult = {
       val inputSubsets: List[KernelDataInput] =  context.fragments
       val optargs: Map[String,String] =  context.args
-      val input_array = inputSubsets(0).dataFragment.data
-      val axisSpecs = inputSubsets(0).axisSpecs
+      val input_array = inputSubsets.head.dataFragment.data
+      val axisSpecs = inputSubsets.head.axisSpecs
       val axes = axisSpecs.getAxes
       val t0 = System.nanoTime
       val mean_val = input_array.rawmean( axes:_* )
@@ -43,8 +43,8 @@ class CDS extends KernelModule with KernelTools {
     def execute(context: ExecutionContext ): ExecutionResult = {
       val inputSubsets: List[KernelDataInput] =  context.fragments
       val optargs: Map[String,String] =  context.args
-      val input_array = inputSubsets(0).dataFragment.data
-      val axisSpecs = inputSubsets(0).axisSpecs
+      val input_array = inputSubsets.head.dataFragment.data
+      val axisSpecs = inputSubsets.head.axisSpecs
       val axes = axisSpecs.getAxes
       val t10 = System.nanoTime
       val mean_val_masked = input_array.mean( axes:_* )
@@ -61,8 +61,8 @@ class CDS extends KernelModule with KernelTools {
     def execute(context: ExecutionContext ): ExecutionResult = {
       val inputSubsets: List[KernelDataInput] =  context.fragments
       val optargs: Map[String,String] =  context.args
-      val input_array = inputSubsets(0).dataFragment.data
-      val axisSpecs = inputSubsets(0).axisSpecs
+      val input_array = inputSubsets.head.dataFragment.data
+      val axisSpecs = inputSubsets.head.axisSpecs
       val axes = axisSpecs.getAxes
       val t0 = System.nanoTime
       def input_uids = context.getDataSources.keySet
@@ -85,8 +85,8 @@ class CDS extends KernelModule with KernelTools {
     def execute( context: ExecutionContext ): ExecutionResult = {
       val inputSubsets: List[KernelDataInput] =  context.fragments
       val optargs: Map[String,String] =  context.args
-      val input_array = inputSubsets(0).dataFragment.data
-      val axisSpecs = inputSubsets(0).axisSpecs
+      val input_array = inputSubsets.head.dataFragment.data
+      val axisSpecs = inputSubsets.head.axisSpecs
       val axes = axisSpecs.getAxes
       val t10 = System.nanoTime
       val binFactory: BinnedArrayFactory = context.binArrayOpt match {
@@ -94,7 +94,7 @@ class CDS extends KernelModule with KernelTools {
         case Some(bf) => bf
       }
       assert( axes.length == 1, "Must bin over 1 axis only! Requested: " + axes.mkString(",") )
-      val binned_value: Option[Nd4jMaskedTensor] = input_array.bin(axes(0),binFactory)
+      val binned_value: Option[Nd4jMaskedTensor] = input_array.bin(axes.head,binFactory)
       val t11 = System.nanoTime
       println("Binned array, time = %.4f s, result = %s".format( (t11-t10)/1.0E9, binned_value.toString ) )
       binned_value match { case None => throw new Exception("Empty Bins"); case Some(masked_array) => new ExecutionResult( masked_array.data ) }
@@ -109,8 +109,8 @@ class CDS extends KernelModule with KernelTools {
     def execute(context: ExecutionContext ): ExecutionResult = {
       val inputSubsets: List[KernelDataInput] =  context.fragments
       val optargs: Map[String,String] =  context.args
-      val input_array = inputSubsets(0).dataFragment.data
-      val axisSpecs = inputSubsets(0).axisSpecs
+      val input_array = inputSubsets.head.dataFragment.data
+      val axisSpecs = inputSubsets.head.axisSpecs
       val axes = axisSpecs.getAxes
       val t10 = System.nanoTime
       val mean_val_masked = input_array.mean( axisSpecs.getAxes:_* )
