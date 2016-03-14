@@ -178,7 +178,7 @@ object collectionDataCache extends CollectionDataCacheMgr()
 class CDS2ExecutionManager {
   val collectionDataManager = new DataManager( collectionDataCache )
   val logger = LoggerFactory.getLogger(this.getClass)
-  var currentlyExecuting: Option[Future[xml.Elem]] = None
+
   val processAsyncResult: PartialFunction[Try[xml.Elem],Unit] = {
     case n @ Success(_) => println( "Process Completed: " + n.toString )
     case e @ Failure(_) => println( "Process Error: " + e.toString )
@@ -234,23 +234,19 @@ class CDS2ExecutionManager {
 //    }
 //  }
 
-  def execute( request: TaskRequest, run_args: Map[String,String] ): xml.Elem = {
+  def executeSync( request: TaskRequest, run_args: Map[String,String] ): xml.Elem = {
     logger.info("Execute { runargs: " + run_args.toString + ",  request: " + request.toString + " }")
     val async = run_args.getOrElse("async", "false").toBoolean
     val futureResult = this.futureExecute( request, run_args )
-    if(async) {
-      currentlyExecuting = Some( futureResult )
-      futureResult onComplete processAsyncResult
-      <result> </result>
-    } else
-      Await.result( futureResult, Duration.Inf )
+    Await.result( futureResult, Duration.Inf )
   }
 
-  def awaitResult: xml.Elem = {
-    currentlyExecuting match {
-      case None => <Error> { "No result" } </Error>
-      case Some( futureResult ) => Await.result( futureResult, Duration.Inf )
-    }
+  def executeAsync( request: TaskRequest, run_args: Map[String,String] ): Future[xml.Elem] = {
+    logger.info("Execute { runargs: " + run_args.toString + ",  request: " + request.toString + " }")
+    val async = run_args.getOrElse("async", "false").toBoolean
+    val futureResult = this.futureExecute( request, run_args )
+    futureResult onComplete processAsyncResult
+    futureResult
   }
 
   def describeProcess( kernelName: String ): xml.Elem = getKernel( kernelName ).toXml
@@ -418,12 +414,21 @@ object executionTest extends App {
   val run_args = Map( "async" -> async.toString )
   val cds2ExecutionManager = new CDS2ExecutionManager()
   val t0 = System.nanoTime
-  val initial_result = cds2ExecutionManager.execute(request, run_args)
-  val t1 = System.nanoTime
-  println("Initial Result, time = %.4f: %s ".format( (t1-t0)/1.0E9,  initial_result.toString) )
-  val final_result = cds2ExecutionManager.awaitResult
-  val t2 = System.nanoTime
-  println("Final Result, time = %.4f (%.4f): %s ".format( (t2-t1)/1.0E9, (t2-t0)/1.0E9, final_result.toString) )
+  if(async) {
+    val futureResult = cds2ExecutionManager.executeAsync(request, run_args)
+    val t1 = System.nanoTime
+    println("Initial Result, time = %.4f ".format( (t1-t0)/1.0E9 ) )
+    val final_result = Await.result( futureResult, Duration.Inf )
+    val t2 = System.nanoTime
+    println("Final Result, time = %.4f (%.4f): %s ".format( (t2-t1)/1.0E9, (t2-t0)/1.0E9, final_result.toString) )
+  }
+  else {
+    val t1 = System.nanoTime
+    val final_result = cds2ExecutionManager.executeSync(request, run_args)
+    val t2 = System.nanoTime
+    println("Final Result, time = %.4f (%.4f): %s ".format( (t2-t1)/1.0E9, (t2-t0)/1.0E9, final_result.toString) )
+  }
+
 }
 
 object parseTest extends App {
