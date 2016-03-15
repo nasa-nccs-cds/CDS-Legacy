@@ -31,7 +31,10 @@ class CDS extends KernelModule with KernelTools {
       val mean_val = input_array.rawmean( axes:_* )
       val t1 = System.nanoTime
       logger.info("Kernel %s: Executed operation %s, time= %.4f s, result = %s ".format(name, operation, (t1-t0)/1.0E9, mean_val.toString ))
-      new ExecutionResult( mean_val.data )
+      if(context.async) {
+        new AsyncExecutionResult( saveResult( mean_val ) )
+      }
+      else new BlockingExecutionResult( mean_val.data )
     }
   }
 
@@ -50,7 +53,10 @@ class CDS extends KernelModule with KernelTools {
       val mean_val_masked = input_array.mean( axes:_* )
       val t11 = System.nanoTime
       println("Mean_val_masked, time = %.4f s, result = %s".format( (t11-t10)/1.0E9, mean_val_masked.toString ) )
-      new ExecutionResult( mean_val_masked.data )
+      if(context.async) {
+        new AsyncExecutionResult( saveResult( mean_val_masked ) )
+      }
+      else new BlockingExecutionResult( mean_val_masked.data )
     }
   }
   class subset extends Kernel {
@@ -61,7 +67,7 @@ class CDS extends KernelModule with KernelTools {
     def execute(context: ExecutionContext ): ExecutionResult = {
       val inputSubsets: List[KernelDataInput] =  context.fragments
       val optargs: Map[String,String] =  context.args
-      val input_array = inputSubsets.head.dataFragment.data
+      val input_array = inputSubsets.head.dataFragment
       val axisSpecs = inputSubsets.head.axisSpecs
       val axes = axisSpecs.getAxes
       val t0 = System.nanoTime
@@ -69,11 +75,15 @@ class CDS extends KernelModule with KernelTools {
       assert( input_uids.size == 1, "Wrong number of arguments to 'subset': %d ".format(input_uids.size) )
       val result = context.args.get("domain") match {
         case None => input_array
-        case Some(domain_id) => context.dataManager.getSubset( input_uids.head, context.getFragmentSpec(input_uids.head), context.getDomain(domain_id) ).data
+        case Some(domain_id) => context.dataManager.getSubset( input_uids.head, context.getFragmentSpec(input_uids.head), context.getDomain(domain_id) )
       }
       val t1 = System.nanoTime
-      println("Subset: time = %.4f s, result = %s, value = [ %s ]".format( (t1-t0)/1.0E9, result.toString, result.data.mkString(",") ) )
-      new ExecutionResult( result.data )
+      val resultArray = result.data
+      println("Subset: time = %.4f s, result = %s, value = [ %s ]".format( (t1-t0)/1.0E9, result.toString, resultArray.data.mkString(",") ) )
+      if(context.async) {
+        new AsyncExecutionResult( saveResult( result ) )
+      }
+      else new BlockingExecutionResult( resultArray.data )
     }
   }
 
@@ -97,7 +107,14 @@ class CDS extends KernelModule with KernelTools {
       val binned_value: Option[Nd4jMaskedTensor] = input_array.bin(axes.head,binFactory)
       val t11 = System.nanoTime
       println("Binned array, time = %.4f s, result = %s".format( (t11-t10)/1.0E9, binned_value.toString ) )
-      binned_value match { case None => throw new Exception("Empty Bins"); case Some(masked_array) => new ExecutionResult( masked_array.data ) }
+      binned_value match {
+        case None => throw new Exception("Empty Bins");
+        case Some(masked_array) =>
+          if (context.async) {
+            new AsyncExecutionResult(saveResult(masked_array))
+          }
+          else new BlockingExecutionResult(masked_array.data)
+      }
     }
   }
 
@@ -118,7 +135,10 @@ class CDS extends KernelModule with KernelTools {
       val anomaly_result = input_array - bc_mean_val_masked
       val t11 = System.nanoTime
       println("Anomaly, time = %.4f s, result = %s".format( (t11-t10)/1.0E9, anomaly_result.toString ) )
-      new ExecutionResult( anomaly_result.data )
+      if(context.async) {
+        new AsyncExecutionResult( saveResult( anomaly_result ) )
+      }
+      else new BlockingExecutionResult( anomaly_result.data )
     }
   }
 }

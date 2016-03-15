@@ -8,13 +8,22 @@ import org.nd4j.linalg.factory.Nd4j
 import org.slf4j.LoggerFactory
 import scala.collection.{concurrent, mutable}
 import nasa.nccs.utilities.cdsutils
-import nasa.nccs.cds2.kernels.kernelManager
+import nasa.nccs.cds2.kernels.KernelMgr
 import nasa.nccs.cdapi.kernels._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise, Await}
 import scala.util.{ Try, Success, Failure }
+import java.util.concurrent.atomic.AtomicReference
 import spray.caching._
+
+class Counter(start: Int = 0) {
+  private val index = new AtomicReference(start)
+  def get: Int = {
+    val i0 = index.get
+    if(index.compareAndSet( i0, i0 + 1 )) i0 else get
+  }
+}
 
 class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
   val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
@@ -175,14 +184,11 @@ class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
 
 object collectionDataCache extends CollectionDataCacheMgr()
 
-class CDS2ExecutionManager {
+class CDS2ExecutionManager( val serverConfiguration: Map[String,String] ) {
   val collectionDataManager = new DataManager( collectionDataCache )
   val logger = LoggerFactory.getLogger(this.getClass)
-
-  val processAsyncResult: PartialFunction[Try[xml.Elem],Unit] = {
-    case n @ Success(_) => println( "Process Completed: " + n.toString )
-    case e @ Failure(_) => println( "Process Error: " + e.toString )
-  }
+  val kernelManager = new KernelMgr()
+  private val counter = new Counter
 
   def getKernelModule( moduleName: String  ): KernelModule = {
     kernelManager.getModule( moduleName  ) match {
@@ -202,15 +208,24 @@ class CDS2ExecutionManager {
     getKernel( toks.dropRight(1).mkString("."), toks.last )
   }
 
-  def fatal(err: Exception): xml.Elem = {
+  def fatal(err: Throwable): String = {
     logger.error( "\nError Executing Kernel: %s\n".format(err.getMessage) )
     val sw = new StringWriter
     err.printStackTrace(new PrintWriter(sw))
     logger.error( sw.toString )
-    <Error> { err.getMessage } </Error>
+    err.getMessage
   }
 
-  def futureExecute( request: TaskRequest, run_args: Map[String,String] ): Future[xml.Elem] = Future {
+  def futureExecute( request: TaskRequest, run_args: Map[String,String] ): Future[ExecutionResults] = Future {
+    val sourceContainers = request.variableMap.values.filter(_.isSource)
+    for (data_container: DataContainer <- request.variableMap.values; if data_container.isSource) {
+      collectionDataManager.loadVariableData(data_container, request.getDomain(data_container.getSource))
+    }
+    executeWorkflows(request, run_args)
+  }
+
+  def blockingExecute( request: TaskRequest, run_args: Map[String,String] ): xml.Elem =  {
+    logger.info("Bloking Execute { runargs: " + run_args.toString + ",  request: " + request.toString + " }")
     try {
       val sourceContainers = request.variableMap.values.filter(_.isSource)
       for (data_container: DataContainer <- request.variableMap.values; if data_container.isSource) {
@@ -218,7 +233,7 @@ class CDS2ExecutionManager {
       }
       executeWorkflows(request, run_args).toXml
     } catch {
-      case err: Exception => fatal(err)
+      case err: Exception => <error> {fatal(err)} </error>
     }
   }
 
@@ -234,19 +249,26 @@ class CDS2ExecutionManager {
 //    }
 //  }
 
-  def executeSync( request: TaskRequest, run_args: Map[String,String] ): xml.Elem = {
-    logger.info("Execute { runargs: " + run_args.toString + ",  request: " + request.toString + " }")
-    val async = run_args.getOrElse("async", "false").toBoolean
-    val futureResult = this.futureExecute( request, run_args )
-    Await.result( futureResult, Duration.Inf )
+  def getResultFilePath( resultId: String ): Option[String] = {
+    Some("")
   }
 
-  def executeAsync( request: TaskRequest, run_args: Map[String,String] ): Future[xml.Elem] = {
+  def executeAsync( request: TaskRequest, run_args: Map[String,String] ): xml.Elem = {
     logger.info("Execute { runargs: " + run_args.toString + ",  request: " + request.toString + " }")
     val async = run_args.getOrElse("async", "false").toBoolean
-    val futureResult = this.futureExecute( request, run_args )
-    futureResult onComplete processAsyncResult
-    futureResult
+    val resultId = "r" + counter.get.toString
+    val futureResult = this.futureExecute( request, Map( "resultId" -> resultId ) ++ run_args )
+    futureResult onSuccess { case result: ExecutionResults =>
+      println("Process Completed: " + result.toString )
+//      processAsyncResult(result)
+    }
+    futureResult onFailure { case e: Throwable => fatal( e ); throw e }
+    <result> {resultId} </result>
+  }
+
+  def execute( request: TaskRequest, runargs: Map[String,String] ): xml.Elem = {
+    val async = runargs.getOrElse("async","false").toBoolean
+    if(async) executeAsync( request, runargs ) else  blockingExecute( request, runargs )
   }
 
   def describeProcess( kernelName: String ): xml.Elem = getKernel( kernelName ).toXml
@@ -264,7 +286,7 @@ class CDS2ExecutionManager {
     val fragments: List[KernelDataInput] = for( uid <- operation.inputs ) yield new KernelDataInput( collectionDataManager.getVariableData(uid), collectionDataManager.getAxisSpecs(uid) )
     val binArrayOpt = collectionDataManager.getBinnedArrayFactory( operation )
     val args = operation.optargs ++ run_args
-    new ExecutionContext( fragments, binArrayOpt, domainMap, collectionDataManager, args )
+    new ExecutionContext( fragments, binArrayOpt, domainMap, collectionDataManager, serverConfiguration, args )
   }
 }
 
@@ -381,7 +403,7 @@ object exeSyncTest extends App {
   val operationContainer =  new OperationContainer( identifier = "CDS.average~ivar#1",  name ="CDS.average", result = "ivar#1", inputs = List("v0"), optargs = Map("axis" -> "xy") )
   val dataContainer = new DataContainer( uid="v0", source = Some(new DataSource( name = "hur", collection = "merra/mon/atmos", domain = "d0" ) ) )
   val domainContainer = new DomainContainer( name = "d0", axes = cdsutils.flatlist( DomainAxis(Lev,6,6) ) )
-  val cds2ExecutionManager = new CDS2ExecutionManager()
+  val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
   val t0 = System.nanoTime
   val partitionedFragmentOpt = SampleTaskRequests.getFragmentSync( dataContainer, domainContainer )
   val t1 = System.nanoTime
@@ -396,7 +418,7 @@ object exeConcurrencyTest extends App {
   val operationContainer =  new OperationContainer( identifier = "CDS.average~ivar#1",  name ="CDS.average", result = "ivar#1", inputs = List("v0"), optargs = Map("axis" -> "xy") )
   val dataContainer = new DataContainer( uid="v0", source = Some(new DataSource( name = "hur", collection = "merra/mon/atmos", domain = "d0" ) ) )
   val domainContainer = new DomainContainer( name = "d0", axes = cdsutils.flatlist( DomainAxis(Lev,10,10) ) )
-  val cds2ExecutionManager = new CDS2ExecutionManager()
+  val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
   cds2ExecutionManager.collectionDataManager.dataLoader.getVariable( dataContainer.getSource.collection, dataContainer.getSource.name )
   val t0 = System.nanoTime
 //  val futurePartitionedFragment: Future[PartitionedFragment] = cds2ExecutionManager.collectionDataManager.dataLoader.loadDataFragmentFuture( dataContainer, domainContainer )
@@ -409,22 +431,19 @@ object exeConcurrencyTest extends App {
 }
 
 object executionTest extends App {
-  val request = SampleTaskRequests.getTimeSliceAnomaly
+  val request = SampleTaskRequests.getSubsetRequest
   val async = false
   val run_args = Map( "async" -> async.toString )
-  val cds2ExecutionManager = new CDS2ExecutionManager()
+  val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
   val t0 = System.nanoTime
   if(async) {
     val futureResult = cds2ExecutionManager.executeAsync(request, run_args)
     val t1 = System.nanoTime
     println("Initial Result, time = %.4f ".format( (t1-t0)/1.0E9 ) )
-    val final_result = Await.result( futureResult, Duration.Inf )
-    val t2 = System.nanoTime
-    println("Final Result, time = %.4f (%.4f): %s ".format( (t2-t1)/1.0E9, (t2-t0)/1.0E9, final_result.toString) )
-  }
+   }
   else {
     val t1 = System.nanoTime
-    val final_result = cds2ExecutionManager.executeSync(request, run_args)
+    val final_result = cds2ExecutionManager.blockingExecute(request, run_args)
     val t2 = System.nanoTime
     println("Final Result, time = %.4f (%.4f): %s ".format( (t2-t1)/1.0E9, (t2-t0)/1.0E9, final_result.toString) )
   }

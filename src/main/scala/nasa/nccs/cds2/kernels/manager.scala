@@ -30,10 +30,5 @@ class KernelMgr(  ) {
   }
 }
 
-object kernelManager extends KernelMgr() {}
 
-
-object kernelManagerTest extends App {
-  println( kernelManager.toXml )
-}
 
