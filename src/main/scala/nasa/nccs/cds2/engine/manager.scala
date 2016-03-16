@@ -258,7 +258,7 @@ class CDS2ExecutionManager( val serverConfiguration: Map[String,String] ) {
     val async = run_args.getOrElse("async", "false").toBoolean
     val resultId = "r" + counter.get.toString
     val futureResult = this.futureExecute( request, Map( "resultId" -> resultId ) ++ run_args )
-    futureResult onSuccess { case result: ExecutionResults =>
+    futureResult onSuccess { case result: ExecutionResult =>
       println("Process Completed: " + result.toString )
 //      processAsyncResult(result)
     }

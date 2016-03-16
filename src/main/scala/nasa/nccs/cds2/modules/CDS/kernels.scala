@@ -32,7 +32,7 @@ class CDS extends KernelModule with KernelTools {
       val t1 = System.nanoTime
       logger.info("Kernel %s: Executed operation %s, time= %.4f s, result = %s ".format(name, operation, (t1-t0)/1.0E9, mean_val.toString ))
       if(context.async) {
-        new AsyncExecutionResult( saveResult( mean_val ) )
+        new AsyncExecutionResult( saveResult( mean_val, context ) )
       }
       else new BlockingExecutionResult( mean_val.data )
     }
@@ -54,7 +54,7 @@ class CDS extends KernelModule with KernelTools {
       val t11 = System.nanoTime
       println("Mean_val_masked, time = %.4f s, result = %s".format( (t11-t10)/1.0E9, mean_val_masked.toString ) )
       if(context.async) {
-        new AsyncExecutionResult( saveResult( mean_val_masked ) )
+        new AsyncExecutionResult( saveResult( mean_val_masked, context ) )
       }
       else new BlockingExecutionResult( mean_val_masked.data )
     }
@@ -81,7 +81,7 @@ class CDS extends KernelModule with KernelTools {
       val resultArray = result.data
       println("Subset: time = %.4f s, result = %s, value = [ %s ]".format( (t1-t0)/1.0E9, result.toString, resultArray.data.mkString(",") ) )
       if(context.async) {
-        new AsyncExecutionResult( saveResult( result ) )
+        new AsyncExecutionResult( saveResult( result, context ) )
       }
       else new BlockingExecutionResult( resultArray.data )
     }
@@ -111,7 +111,7 @@ class CDS extends KernelModule with KernelTools {
         case None => throw new Exception("Empty Bins");
         case Some(masked_array) =>
           if (context.async) {
-            new AsyncExecutionResult(saveResult(masked_array))
+            new AsyncExecutionResult(saveResult(masked_array, context ))
           }
           else new BlockingExecutionResult(masked_array.data)
       }
@@ -136,7 +136,7 @@ class CDS extends KernelModule with KernelTools {
       val t11 = System.nanoTime
       println("Anomaly, time = %.4f s, result = %s".format( (t11-t10)/1.0E9, anomaly_result.toString ) )
       if(context.async) {
-        new AsyncExecutionResult( saveResult( anomaly_result ) )
+        new AsyncExecutionResult( saveResult( anomaly_result, context ) )
       }
       else new BlockingExecutionResult( anomaly_result.data )
     }
