@@ -2,6 +2,7 @@ package nasa.nccs.cds2.engine
 import java.io.{PrintWriter, StringWriter}
 import nasa.nccs.cdapi.cdm
 import nasa.nccs.cdapi.cdm._
+import nasa.nccs.cdapi.tensors.Nd4jMaskedTensor
 import nasa.nccs.cds2.loaders.Collections
 import nasa.nccs.esgf.process._
 import org.nd4j.linalg.factory.Nd4j
@@ -431,7 +432,7 @@ object exeConcurrencyTest extends App {
 }
 
 object executionTest extends App {
-  val request = SampleTaskRequests.getSubsetRequest
+  val request = SampleTaskRequests.getCreateVRequest
   val async = false
   val run_args = Map( "async" -> async.toString )
   val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
@@ -457,9 +458,19 @@ object parseTest extends App {
 }
 
 object arrayTest extends App {
-  val array = Nd4j.create( Array.fill[Float](100)(1f), Array(50,1,2))
-  val s0 = array.slice(0, 0 ); println( "shape = %s".format( s0.shape.mkString(",")) )
+  val array = Nd4j.create( Array.fill[Float](40)(1f), Array(10,2,2))
+  val tensor = new Nd4jMaskedTensor(array)
+  array.putScalar( Array(1,1,0), 3.0 )
+  array.putScalar( Array(1,1,1), 3.0 )
+  println( "init data = [ %s ]".format( tensor.data.mkString(",")) )
+  val s0 = tensor.slice( 1, 0 )
+  println( "shape = %s, offset = %d".format( s0.shape.mkString(","), s0.tensor.offset ) )
+  s0.tensor.putScalar( Array(0,1,0), 2.0 )
+  println( "data = [ %s ]".format( tensor.data.mkString(",")) )
+  println( "data0 = %s".format( s0.tensor.getFloat( Array(0,0,0))) )
+  println( "data1 = %s".format( s0.tensor.getFloat( Array(0,0,1))) )
 }
+
 
 
 

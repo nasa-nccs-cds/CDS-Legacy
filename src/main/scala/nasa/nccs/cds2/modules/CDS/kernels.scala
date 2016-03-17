@@ -6,7 +6,6 @@ import nasa.nccs.cdapi.tensors.Nd4jMaskedTensor
 import nasa.nccs.cds2.kernels.KernelTools
 import nasa.nccs.esgf.process.DataSource
 import org.nd4j.linalg.api.ndarray.INDArray
-import org.nd4s.Implicits._
 import scala.reflect.runtime._
 import scala.reflect.runtime.universe._
 
