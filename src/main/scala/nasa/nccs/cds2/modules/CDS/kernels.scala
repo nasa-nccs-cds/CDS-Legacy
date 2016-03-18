@@ -21,17 +21,17 @@ class CDS extends KernelModule with KernelTools {
     override val description = "Raw Average over Input Fragment"
 
     def execute( context: ExecutionContext ): ExecutionResult = {
-      val inputSubsets: List[KernelDataInput] =  context.fragments
+      val inputVar: KernelDataInput  =  context.fragments.head
       val optargs: Map[String,String] =  context.args
-      val input_array = inputSubsets.head.dataFragment.data
-      val axisSpecs = inputSubsets.head.axisSpecs
+      val input_array = inputVar.dataFragment.data
+      val axisSpecs = inputVar.axisSpecs
       val axes = axisSpecs.getAxes
       val t0 = System.nanoTime
       val mean_val = input_array.rawmean( axes:_* )
       val t1 = System.nanoTime
       logger.info("Kernel %s: Executed operation %s, time= %.4f s, result = %s ".format(name, operation, (t1-t0)/1.0E9, mean_val.toString ))
       if(context.async) {
-        new AsyncExecutionResult( saveResult( mean_val, context ) )
+        new AsyncExecutionResult( saveResult( mean_val, context, inputVar.getVariableMetadata(context.dataManager), inputVar.getDatasetMetadata(context.dataManager) ) )
       }
       else new BlockingExecutionResult( mean_val.data )
     }
@@ -43,17 +43,17 @@ class CDS extends KernelModule with KernelTools {
     override val description = "Average over Input Fragment"
 
     def execute(context: ExecutionContext ): ExecutionResult = {
-      val inputSubsets: List[KernelDataInput] =  context.fragments
+      val inputVar: KernelDataInput  =  context.fragments.head
       val optargs: Map[String,String] =  context.args
-      val input_array = inputSubsets.head.dataFragment.data
-      val axisSpecs = inputSubsets.head.axisSpecs
+      val input_array = inputVar.dataFragment.data
+      val axisSpecs = inputVar.axisSpecs
       val axes = axisSpecs.getAxes
       val t10 = System.nanoTime
       val mean_val_masked = input_array.mean( axes:_* )
       val t11 = System.nanoTime
       println("Mean_val_masked, time = %.4f s, result = %s".format( (t11-t10)/1.0E9, mean_val_masked.toString ) )
       if(context.async) {
-        new AsyncExecutionResult( saveResult( mean_val_masked, context ) )
+        new AsyncExecutionResult( saveResult( mean_val_masked, context, inputVar.getVariableMetadata(context.dataManager), inputVar.getDatasetMetadata(context.dataManager) ) )
       }
       else new BlockingExecutionResult( mean_val_masked.data )
     }
@@ -64,25 +64,24 @@ class CDS extends KernelModule with KernelTools {
     override val description = "Average over Input Fragment"
 
     def execute(context: ExecutionContext ): ExecutionResult = {
-      val inputSubsets: List[KernelDataInput] =  context.fragments
+      val inputVar: KernelDataInput  =  context.fragments.head
       val optargs: Map[String,String] =  context.args
-      val input_array = inputSubsets.head.dataFragment
-      val axisSpecs = inputSubsets.head.axisSpecs
+      val input_array = inputVar.dataFragment
+      val axisSpecs = inputVar.axisSpecs
       val axes = axisSpecs.getAxes
       val t0 = System.nanoTime
       def input_uids = context.getDataSources.keySet
       assert( input_uids.size == 1, "Wrong number of arguments to 'subset': %d ".format(input_uids.size) )
-      val result = context.args.get("domain") match {
+      val result: PartitionedFragment = context.args.get("domain") match {
         case None => input_array
         case Some(domain_id) => context.dataManager.getSubset( input_uids.head, context.getFragmentSpec(input_uids.head), context.getDomain(domain_id) )
       }
       val t1 = System.nanoTime
-      val resultArray = result.data
-      println("Subset: time = %.4f s, result = %s, value = [ %s ]".format( (t1-t0)/1.0E9, result.toString, resultArray.data.mkString(",") ) )
+      println("Subset: time = %.4f s, result = %s, value = [ %s ]".format( (t1-t0)/1.0E9, result.toString, result.data.data.mkString(",") ) )
       if(context.async) {
-        new AsyncExecutionResult( saveResult( result, context ) )
+        new AsyncExecutionResult( saveResult( result.data, context, inputVar.getVariableMetadata(context.dataManager), inputVar.getDatasetMetadata(context.dataManager) ) )
       }
-      else new BlockingExecutionResult( resultArray.data )
+      else new BlockingExecutionResult( result.data.data )
     }
   }
 
@@ -92,10 +91,10 @@ class CDS extends KernelModule with KernelTools {
     override val description = "Binning over Input Fragment"
 
     def execute( context: ExecutionContext ): ExecutionResult = {
-      val inputSubsets: List[KernelDataInput] =  context.fragments
+      val inputVar: KernelDataInput  =  context.fragments.head
       val optargs: Map[String,String] =  context.args
-      val input_array = inputSubsets.head.dataFragment.data
-      val axisSpecs = inputSubsets.head.axisSpecs
+      val input_array: Nd4jMaskedTensor = inputVar.dataFragment.data
+      val axisSpecs = inputVar.axisSpecs
       val axes = axisSpecs.getAxes
       val t10 = System.nanoTime
       val binFactory: BinnedArrayFactory = context.binArrayOpt match {
@@ -110,7 +109,7 @@ class CDS extends KernelModule with KernelTools {
         case None => throw new Exception("Empty Bins");
         case Some(masked_array) =>
           if (context.async) {
-            new AsyncExecutionResult(saveResult(masked_array, context ))
+            new AsyncExecutionResult(saveResult(masked_array, context, inputVar.getVariableMetadata(context.dataManager), inputVar.getDatasetMetadata(context.dataManager) ))
           }
           else new BlockingExecutionResult(masked_array.data)
       }
@@ -123,10 +122,10 @@ class CDS extends KernelModule with KernelTools {
     override val description = "Anomaly over Input Fragment"
 
     def execute(context: ExecutionContext ): ExecutionResult = {
-      val inputSubsets: List[KernelDataInput] =  context.fragments
+      val inputVar: KernelDataInput  =  context.fragments.head
       val optargs: Map[String,String] =  context.args
-      val input_array = inputSubsets.head.dataFragment.data
-      val axisSpecs = inputSubsets.head.axisSpecs
+      val input_array = inputVar.dataFragment.data
+      val axisSpecs = inputVar.axisSpecs
       val axes = axisSpecs.getAxes
       val t10 = System.nanoTime
       val mean_val_masked = input_array.mean( axisSpecs.getAxes:_* )
@@ -135,7 +134,7 @@ class CDS extends KernelModule with KernelTools {
       val t11 = System.nanoTime
       println("Anomaly, time = %.4f s, result = %s".format( (t11-t10)/1.0E9, anomaly_result.toString ) )
       if(context.async) {
-        new AsyncExecutionResult( saveResult( anomaly_result, context ) )
+        new AsyncExecutionResult( saveResult( anomaly_result, context, inputVar.getVariableMetadata(context.dataManager), inputVar.getDatasetMetadata(context.dataManager) ) )
       }
       else new BlockingExecutionResult( anomaly_result.data )
     }

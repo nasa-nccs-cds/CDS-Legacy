@@ -254,23 +254,27 @@ class CDS2ExecutionManager( val serverConfiguration: Map[String,String] ) {
     Some("")
   }
 
-  def executeAsync( request: TaskRequest, run_args: Map[String,String] ): xml.Elem = {
+  def executeAsync( request: TaskRequest, run_args: Map[String,String] ): ( String, Future[ExecutionResults] ) = {
     logger.info("Execute { runargs: " + run_args.toString + ",  request: " + request.toString + " }")
     val async = run_args.getOrElse("async", "false").toBoolean
     val resultId = "r" + counter.get.toString
     val futureResult = this.futureExecute( request, Map( "resultId" -> resultId ) ++ run_args )
-    futureResult onSuccess { case result: ExecutionResult =>
-      println("Process Completed: " + result.toString )
-//      processAsyncResult(result)
+    futureResult onSuccess { case results: ExecutionResults =>
+      println("Process Completed: " + results.toString )
+      processAsyncResult( resultId, results )
     }
     futureResult onFailure { case e: Throwable => fatal( e ); throw e }
-    <result> {resultId} </result>
+    (resultId, futureResult)
   }
 
-  def execute( request: TaskRequest, runargs: Map[String,String] ): xml.Elem = {
-    val async = runargs.getOrElse("async","false").toBoolean
-    if(async) executeAsync( request, runargs ) else  blockingExecute( request, runargs )
+  def processAsyncResult( resultId: String, results: ExecutionResults ) = {
+
   }
+
+//  def execute( request: TaskRequest, runargs: Map[String,String] ): xml.Elem = {
+//    val async = runargs.getOrElse("async","false").toBoolean
+//    if(async) executeAsync( request, runargs ) else  blockingExecute( request, runargs )
+//  }
 
   def describeProcess( kernelName: String ): xml.Elem = getKernel( kernelName ).toXml
 
@@ -432,15 +436,21 @@ object exeConcurrencyTest extends App {
 }
 
 object executionTest extends App {
-  val request = SampleTaskRequests.getCreateVRequest
-  val async = false
+  val request = SampleTaskRequests.getAnomalyTest
+  val async = true
   val run_args = Map( "async" -> async.toString )
   val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
   val t0 = System.nanoTime
   if(async) {
-    val futureResult = cds2ExecutionManager.executeAsync(request, run_args)
-    val t1 = System.nanoTime
-    println("Initial Result, time = %.4f ".format( (t1-t0)/1.0E9 ) )
+    cds2ExecutionManager.executeAsync(request, run_args) match {
+      case ( resultId: String, futureResult: Future[ExecutionResults] ) =>
+        val t1 = System.nanoTime
+        println ("Initial Result, time = %.4f ".format ((t1 - t0) / 1.0E9) )
+        val result = Await.result (futureResult, Duration.Inf)
+        val t2 = System.nanoTime
+        println ("Final Result, time = %.4f, result = %s ".format ((t2 - t1) / 1.0E9, result.toString) )
+      case x => println( "Unrecognized result from executeAsync: " + x.toString )
+    }
    }
   else {
     val t1 = System.nanoTime
