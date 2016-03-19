@@ -436,8 +436,8 @@ object exeConcurrencyTest extends App {
 }
 
 object executionTest extends App {
-  val request = SampleTaskRequests.getAnomalyTest
-  val async = true
+  val request = SampleTaskRequests.getYearlyCycleSlice
+  val async = false
   val run_args = Map( "async" -> async.toString )
   val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
   val t0 = System.nanoTime
