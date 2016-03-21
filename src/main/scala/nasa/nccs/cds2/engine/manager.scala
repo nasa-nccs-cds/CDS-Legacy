@@ -226,7 +226,7 @@ class CDS2ExecutionManager( val serverConfiguration: Map[String,String] ) {
   }
 
   def blockingExecute( request: TaskRequest, run_args: Map[String,String] ): xml.Elem =  {
-    logger.info("Bloking Execute { runargs: " + run_args.toString + ",  request: " + request.toString + " }")
+    logger.info("Blocking Execute { runargs: " + run_args.toString + ",  request: " + request.toString + " }")
     try {
       val sourceContainers = request.variableMap.values.filter(_.isSource)
       for (data_container: DataContainer <- request.variableMap.values; if data_container.isSource) {
@@ -437,7 +437,7 @@ object exeConcurrencyTest extends App {
 
 object executionTest extends App {
   val request = SampleTaskRequests.getYearlyCycleSlice
-  val async = false
+  val async = true
   val run_args = Map( "async" -> async.toString )
   val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
   val t0 = System.nanoTime
