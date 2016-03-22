@@ -18,6 +18,7 @@ import scala.util.{ Try, Success, Failure }
 import java.util.concurrent.atomic.AtomicReference
 import spray.caching._
 
+
 class Counter(start: Int = 0) {
   private val index = new AtomicReference(start)
   def get: Int = {
@@ -251,7 +252,9 @@ class CDS2ExecutionManager( val serverConfiguration: Map[String,String] ) {
 //  }
 
   def getResultFilePath( resultId: String ): Option[String] = {
-    Some("")
+    import java.io.File
+    val resultFile = Kernel.getResultFile( serverConfiguration, resultId )
+    if(resultFile.exists) Some(resultFile.getAbsolutePath) else None
   }
 
   def executeAsync( request: TaskRequest, run_args: Map[String,String] ): ( String, Future[ExecutionResults] ) = {
