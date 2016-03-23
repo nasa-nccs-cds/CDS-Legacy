@@ -326,7 +326,7 @@ object SampleTaskRequests {
   def getCreateVRequest: TaskRequest = {
     val dataInputs = Map(
       "domain" -> List( Map("name" -> "d0", "lat" -> Map("start" -> 45, "end" -> 45, "system" -> "values"), "lon" -> Map("start" -> 30, "end" -> 30, "system" -> "values"), "lev" -> Map("start" -> 3, "end" -> 3, "system" -> "indices")),
-                        Map("name" -> "d1", "time" -> Map("start" -> 3, "end" -> 3, "system" -> "indices") ) ),
+                        Map("name" -> "d1", "time" -> Map("start" -> "2010-01-16T12:00:00", "end" -> "2010-01-16T12:00:00", "system" -> "values") ) ),
       "variable" -> List( Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "ta:v0", "domain" -> "d0") ),
       "operation" -> List(Map("unparsed" -> "CDS.anomaly( v0, axes: t ),CDS.bin( v0, axes: t, bins: t|month|ave|year ),CDS.subset( v0, domain:d1 )" )) )
     TaskRequest( "CDS.workflow", dataInputs )
@@ -439,8 +439,8 @@ object exeConcurrencyTest extends App {
 }
 
 object executionTest extends App {
-  val request = SampleTaskRequests.getYearlyCycleSlice
-  val async = true
+  val request = SampleTaskRequests.getCreateVRequest
+  val async = false
   val run_args = Map( "async" -> async.toString )
   val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
   val t0 = System.nanoTime
@@ -461,7 +461,6 @@ object executionTest extends App {
     val t2 = System.nanoTime
     println("Final Result, time = %.4f (%.4f): %s ".format( (t2-t1)/1.0E9, (t2-t0)/1.0E9, final_result.toString) )
   }
-
 }
 
 object parseTest extends App {
