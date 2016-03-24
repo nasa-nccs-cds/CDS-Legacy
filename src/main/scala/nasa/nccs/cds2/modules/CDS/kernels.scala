@@ -24,16 +24,18 @@ class CDS extends KernelModule with KernelTools {
       val inputVar: KernelDataInput  =  context.fragments.head
       val optargs: Map[String,String] =  context.args
       val input_array = inputVar.dataFragment.data
-      val axisSpecs = inputVar.axisSpecs
+      val axisSpecs = inputVar.axisIndices
       val axes = axisSpecs.getAxes
       val t0 = System.nanoTime
       val mean_val = input_array.rawmean( axes:_* )
       val t1 = System.nanoTime
       logger.info("Kernel %s: Executed operation %s, time= %.4f s, result = %s ".format(name, operation, (t1-t0)/1.0E9, mean_val.toString ))
+      val variable = context.dataManager.getVariable( inputVar.getSpec )
+      val section = inputVar.getSpec.getReducedSection(Set(axes:_*))
       if(context.async) {
         new AsyncExecutionResult( saveResult( mean_val, context, inputVar.getVariableMetadata(context.dataManager), inputVar.getDatasetMetadata(context.dataManager) ) )
       }
-      else new BlockingExecutionResult( context.id, List(inputVar.getSpec), mean_val.data )
+      else new BlockingExecutionResult( context.id, List(inputVar.getSpec), variable.getGridSpec(section), mean_val.data )
     }
   }
 
@@ -46,16 +48,18 @@ class CDS extends KernelModule with KernelTools {
       val inputVar: KernelDataInput  =  context.fragments.head
       val optargs: Map[String,String] =  context.args
       val input_array = inputVar.dataFragment.data
-      val axisSpecs = inputVar.axisSpecs
+      val axisSpecs = inputVar.axisIndices
       val axes = axisSpecs.getAxes
       val t10 = System.nanoTime
       val mean_val_masked = input_array.mean( axes:_* )
       val t11 = System.nanoTime
       println("Mean_val_masked, time = %.4f s, result = %s".format( (t11-t10)/1.0E9, mean_val_masked.toString ) )
+      val variable = context.dataManager.getVariable( inputVar.getSpec )
+      val section = inputVar.getSpec.getReducedSection(Set(axes:_*))
       if(context.async) {
         new AsyncExecutionResult( saveResult( mean_val_masked, context, inputVar.getVariableMetadata(context.dataManager), inputVar.getDatasetMetadata(context.dataManager) ) )
       }
-      else new BlockingExecutionResult( context.id, List(inputVar.getSpec), mean_val_masked.data )
+      else new BlockingExecutionResult( context.id, List(inputVar.getSpec), variable.getGridSpec(section), mean_val_masked.data )
     }
   }
   class subset extends Kernel {
@@ -67,7 +71,7 @@ class CDS extends KernelModule with KernelTools {
       val inputVar: KernelDataInput  =  context.fragments.head
       val optargs: Map[String,String] =  context.args
       val input_array = inputVar.dataFragment
-      val axisSpecs = inputVar.axisSpecs
+      val axisSpecs = inputVar.axisIndices
       val axes = axisSpecs.getAxes
       val t0 = System.nanoTime
       def input_uids = context.getDataSources.keySet
@@ -78,10 +82,12 @@ class CDS extends KernelModule with KernelTools {
       }
       val t1 = System.nanoTime
       println("Subset: time = %.4f s, result = %s, value = [ %s ]".format( (t1-t0)/1.0E9, result.toString, result.data.data.mkString(",") ) )
+      val variable = context.dataManager.getVariable( inputVar.getSpec )
+      val section = inputVar.getSpec.getSubSection(result.fragmentSpec.roi)
       if(context.async) {
         new AsyncExecutionResult( saveResult( result.data, context, inputVar.getVariableMetadata(context.dataManager), inputVar.getDatasetMetadata(context.dataManager) ) )
       }
-      else new BlockingExecutionResult( context.id, List(inputVar.getSpec), result.data.data )
+      else new BlockingExecutionResult( context.id, List(inputVar.getSpec), variable.getGridSpec(section), result.data.data )
     }
   }
 
@@ -94,7 +100,7 @@ class CDS extends KernelModule with KernelTools {
       val inputVar: KernelDataInput  =  context.fragments.head
       val optargs: Map[String,String] =  context.args
       val input_array: Nd4jMaskedTensor = inputVar.dataFragment.data
-      val axisSpecs = inputVar.axisSpecs
+      val axisSpecs = inputVar.axisIndices
       val axes = axisSpecs.getAxes
       val t10 = System.nanoTime
       val binFactory: BinnedArrayFactory = context.binArrayOpt match {
@@ -108,10 +114,12 @@ class CDS extends KernelModule with KernelTools {
       binned_value match {
         case None => throw new Exception("Empty Bins");
         case Some(masked_array) =>
+          val variable = context.dataManager.getVariable( inputVar.getSpec )
+          val section = inputVar.getSpec.getReducedSection(Set(axes(0)),masked_array.shape(axes(0)))
           if (context.async) {
             new AsyncExecutionResult(saveResult(masked_array, context, inputVar.getVariableMetadata(context.dataManager), inputVar.getDatasetMetadata(context.dataManager) ))
           }
-          else new BlockingExecutionResult(context.id, List(inputVar.getSpec), masked_array.data)
+          else new BlockingExecutionResult(context.id, List(inputVar.getSpec), variable.getGridSpec(section), masked_array.data)
       }
     }
   }
@@ -125,22 +133,23 @@ class CDS extends KernelModule with KernelTools {
       val inputVar: KernelDataInput  =  context.fragments.head
       val optargs: Map[String,String] =  context.args
       val input_array = inputVar.dataFragment.data
-      val axisSpecs = inputVar.axisSpecs
+      val axisSpecs = inputVar.axisIndices
       val axes = axisSpecs.getAxes
       val t10 = System.nanoTime
       val mean_val_masked = input_array.mean( axisSpecs.getAxes:_* )
       val bc_mean_val_masked = mean_val_masked.broadcast( input_array.shape:_* )
       val anomaly_result = input_array - bc_mean_val_masked
+      val variable = context.dataManager.getVariable( inputVar.getSpec )
+      val section = inputVar.getSpec.roi
       val t11 = System.nanoTime
       println("Anomaly, time = %.4f s, result = %s".format( (t11-t10)/1.0E9, anomaly_result.toString ) )
       if(context.async) {
         new AsyncExecutionResult( saveResult( anomaly_result, context, inputVar.getVariableMetadata(context.dataManager), inputVar.getDatasetMetadata(context.dataManager) ) )
       }
-      else new BlockingExecutionResult( context.id, List(inputVar.getSpec), anomaly_result.data )
+      else new BlockingExecutionResult( context.id, List(inputVar.getSpec), variable.getGridSpec(section), anomaly_result.data )
     }
   }
 }
-
 
 object arrayTest extends App {
   import org.nd4j.linalg.factory.Nd4j

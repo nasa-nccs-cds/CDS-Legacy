@@ -139,7 +139,7 @@ class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
     val variableFuture = getVariableFuture(dataContainer.getSource.collection, dataContainer.getSource.name)
     variableFuture.flatMap( variable => {
       val fragSpec = variable.createFragmentSpec(domain_container.axes)
-      val axisSpecs: AxisSpecs = variable.getAxisSpecs(dataContainer.getOpSpecs)
+      val axisSpecs: AxisIndices = variable.getAxisIndices(dataContainer.getOpSpecs)
       for (frag <- getFragmentFuture(fragSpec)) yield new OperationInputSpec(fragSpec, axisSpecs)
     })
   }
@@ -285,7 +285,7 @@ class CDS2ExecutionManager( val serverConfiguration: Map[String,String] ) {
     getKernel( operation.name.toLowerCase ).execute( getExecutionContext(operation, domainMap, run_args) )
   }
   def getExecutionContext( operation: OperationContainer, domainMap: Map[String,DomainContainer], run_args: Map[String, String] ): ExecutionContext = {
-    val fragments: List[KernelDataInput] = for( uid <- operation.inputs ) yield new KernelDataInput( collectionDataManager.getVariableData(uid), collectionDataManager.getAxisSpecs(uid) )
+    val fragments: List[KernelDataInput] = for( uid <- operation.inputs ) yield new KernelDataInput( collectionDataManager.getVariableData(uid), collectionDataManager.getAxisIndices(uid) )
     val binArrayOpt = collectionDataManager.getBinnedArrayFactory( operation )
     val args = operation.optargs ++ run_args
     new ExecutionContext( operation.identifier, fragments, binArrayOpt, domainMap, collectionDataManager, serverConfiguration, args )
@@ -390,7 +390,7 @@ object SampleTaskRequests {
         val variable = dataset.loadVariable(varName)
         val t0 = System.nanoTime
         val fragSpec = variable.createFragmentSpec(domainContainer.axes)
-        val axisSpecs: AxisSpecs = variable.getAxisSpecs(dataContainer.getOpSpecs)
+        val axisIndices: AxisIndices = variable.getAxisIndices(dataContainer.getOpSpecs)
         val result = variable.loadRoi( fragSpec )
         val t1 = System.nanoTime
         println( " ** Frag gen time %.4f".format( (t1-t0)/1.0E9 ) )
