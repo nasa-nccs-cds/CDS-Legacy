@@ -136,7 +136,7 @@ class CDS extends KernelModule with KernelTools {
       if(context.async) {
         new AsyncExecutionResult( saveResult( anomaly_result, context, inputVar.getVariableMetadata(context.dataManager), inputVar.getDatasetMetadata(context.dataManager) ) )
       }
-      else new BlockingExecutionResult( anomaly_result.data )
+      else new BlockingExecutionResult( context.id, List(inputVar.getSpec), anomaly_result.data )
     }
   }
 }

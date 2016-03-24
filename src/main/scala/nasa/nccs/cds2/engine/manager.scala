@@ -294,7 +294,7 @@ class CDS2ExecutionManager( val serverConfiguration: Map[String,String] ) {
     val fragments: List[KernelDataInput] = for( uid <- operation.inputs ) yield new KernelDataInput( collectionDataManager.getVariableData(uid), collectionDataManager.getAxisSpecs(uid) )
     val binArrayOpt = collectionDataManager.getBinnedArrayFactory( operation )
     val args = operation.optargs ++ run_args
-    new ExecutionContext( fragments, binArrayOpt, domainMap, collectionDataManager, serverConfiguration, args )
+    new ExecutionContext( operation.identifier, fragments, binArrayOpt, domainMap, collectionDataManager, serverConfiguration, args )
   }
 }
 
