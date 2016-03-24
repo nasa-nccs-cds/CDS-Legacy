@@ -33,7 +33,7 @@ class CDS extends KernelModule with KernelTools {
       if(context.async) {
         new AsyncExecutionResult( saveResult( mean_val, context, inputVar.getVariableMetadata(context.dataManager), inputVar.getDatasetMetadata(context.dataManager) ) )
       }
-      else new BlockingExecutionResult( mean_val.data )
+      else new BlockingExecutionResult( context.id, List(inputVar.getSpec), mean_val.data )
     }
   }
 
@@ -55,7 +55,7 @@ class CDS extends KernelModule with KernelTools {
       if(context.async) {
         new AsyncExecutionResult( saveResult( mean_val_masked, context, inputVar.getVariableMetadata(context.dataManager), inputVar.getDatasetMetadata(context.dataManager) ) )
       }
-      else new BlockingExecutionResult( mean_val_masked.data )
+      else new BlockingExecutionResult( context.id, List(inputVar.getSpec), mean_val_masked.data )
     }
   }
   class subset extends Kernel {
@@ -81,7 +81,7 @@ class CDS extends KernelModule with KernelTools {
       if(context.async) {
         new AsyncExecutionResult( saveResult( result.data, context, inputVar.getVariableMetadata(context.dataManager), inputVar.getDatasetMetadata(context.dataManager) ) )
       }
-      else new BlockingExecutionResult( result.data.data )
+      else new BlockingExecutionResult( context.id, List(inputVar.getSpec), result.data.data )
     }
   }
 
@@ -111,7 +111,7 @@ class CDS extends KernelModule with KernelTools {
           if (context.async) {
             new AsyncExecutionResult(saveResult(masked_array, context, inputVar.getVariableMetadata(context.dataManager), inputVar.getDatasetMetadata(context.dataManager) ))
           }
-          else new BlockingExecutionResult(masked_array.data)
+          else new BlockingExecutionResult(context.id, List(inputVar.getSpec), masked_array.data)
       }
     }
   }

@@ -80,10 +80,8 @@ class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
     }
   }
 
-  def getVariableFuture(collection: String, varName: String): Future[CDSVariable] = {
-    variableCache(makeKey(collection, varName)) {
-      promiseVariable(collection, varName) _
-    }
+  def getVariableFuture(collection: String, varName: String): Future[CDSVariable] = variableCache(makeKey(collection, varName)) {
+    promiseVariable(collection, varName) _
   }
 
   def getVariable(collection: String, varName: String): CDSVariable = {
@@ -125,20 +123,16 @@ class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
     fragFuture
   }
 
-  def getFragment( fragSpec: DataFragmentSpec  ): PartitionedFragment = {
-    cutExistingFragment(fragSpec) getOrElse {
-        val fragmentFuture = getFragmentFuture( fragSpec )
-        val result = Await.result( fragmentFuture, Duration.Inf )
-        logger.info("Loaded variable (%s:%s) existing subset data, section = %s ".format(fragSpec.collection, fragSpec.varname, fragSpec.roi ))
-        result
-    }
+  def getFragment( fragSpec: DataFragmentSpec  ): PartitionedFragment = cutExistingFragment(fragSpec) getOrElse {
+    val fragmentFuture = getFragmentFuture( fragSpec )
+    val result = Await.result( fragmentFuture, Duration.Inf )
+    logger.info("Loaded variable (%s:%s) existing subset data, section = %s ".format(fragSpec.collection, fragSpec.varname, fragSpec.roi ))
+    result
   }
 
-  def getFragmentAsync( fragSpec: DataFragmentSpec  ): Future[PartitionedFragment] = {
-    cutExistingFragment(fragSpec) match {
-      case Some( fragment ) => Future { fragment }
-      case None => getFragmentFuture( fragSpec )
-    }
+  def getFragmentAsync( fragSpec: DataFragmentSpec  ): Future[PartitionedFragment] = cutExistingFragment(fragSpec) match {
+    case Some( fragment ) => Future { fragment }
+    case None => getFragmentFuture( fragSpec )
   }
 
   def loadOperationInputFuture( dataContainer: DataContainer, domain_container: DomainContainer ): Future[OperationInputSpec] = {
