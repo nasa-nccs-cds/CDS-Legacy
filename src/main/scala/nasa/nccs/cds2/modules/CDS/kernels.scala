@@ -33,7 +33,7 @@ class CDS extends KernelModule with KernelTools {
       val variable = context.dataManager.getVariable( inputVar.getSpec )
       val section = inputVar.getSpec.getReducedSection(Set(axes:_*))
       if(context.async) {
-        new AsyncExecutionResult( saveResult( mean_val, context, inputVar.getVariableMetadata(context.dataManager), inputVar.getDatasetMetadata(context.dataManager) ) )
+        new AsyncExecutionResult( saveResult( mean_val, context, variable.getGridSpec(section), inputVar.getVariableMetadata(context.dataManager), inputVar.getDatasetMetadata(context.dataManager) ) )
       }
       else new BlockingExecutionResult( context.id, List(inputVar.getSpec), variable.getGridSpec(section), mean_val.data )
     }
@@ -57,7 +57,7 @@ class CDS extends KernelModule with KernelTools {
       val variable = context.dataManager.getVariable( inputVar.getSpec )
       val section = inputVar.getSpec.getReducedSection(Set(axes:_*))
       if(context.async) {
-        new AsyncExecutionResult( saveResult( mean_val_masked, context, inputVar.getVariableMetadata(context.dataManager), inputVar.getDatasetMetadata(context.dataManager) ) )
+        new AsyncExecutionResult( saveResult( mean_val_masked, context, variable.getGridSpec(section), inputVar.getVariableMetadata(context.dataManager), inputVar.getDatasetMetadata(context.dataManager) ) )
       }
       else new BlockingExecutionResult( context.id, List(inputVar.getSpec), variable.getGridSpec(section), mean_val_masked.data )
     }
@@ -85,7 +85,7 @@ class CDS extends KernelModule with KernelTools {
       val variable = context.dataManager.getVariable( inputVar.getSpec )
       val section = inputVar.getSpec.getSubSection(result.fragmentSpec.roi)
       if(context.async) {
-        new AsyncExecutionResult( saveResult( result.data, context, inputVar.getVariableMetadata(context.dataManager), inputVar.getDatasetMetadata(context.dataManager) ) )
+        new AsyncExecutionResult( saveResult( result.data, context, variable.getGridSpec(section), inputVar.getVariableMetadata(context.dataManager), inputVar.getDatasetMetadata(context.dataManager) ) )
       }
       else new BlockingExecutionResult( context.id, List(inputVar.getSpec), variable.getGridSpec(section), result.data.data )
     }
@@ -117,7 +117,7 @@ class CDS extends KernelModule with KernelTools {
           val variable = context.dataManager.getVariable( inputVar.getSpec )
           val section = inputVar.getSpec.getReducedSection(Set(axes(0)),masked_array.shape(axes(0)))
           if (context.async) {
-            new AsyncExecutionResult(saveResult(masked_array, context, inputVar.getVariableMetadata(context.dataManager), inputVar.getDatasetMetadata(context.dataManager) ))
+            new AsyncExecutionResult(saveResult(masked_array, context, variable.getGridSpec(section), inputVar.getVariableMetadata(context.dataManager), inputVar.getDatasetMetadata(context.dataManager) ))
           }
           else new BlockingExecutionResult(context.id, List(inputVar.getSpec), variable.getGridSpec(section), masked_array.data)
       }
@@ -144,7 +144,7 @@ class CDS extends KernelModule with KernelTools {
       val t11 = System.nanoTime
       println("Anomaly, time = %.4f s, result = %s".format( (t11-t10)/1.0E9, anomaly_result.toString ) )
       if(context.async) {
-        new AsyncExecutionResult( saveResult( anomaly_result, context, inputVar.getVariableMetadata(context.dataManager), inputVar.getDatasetMetadata(context.dataManager) ) )
+        new AsyncExecutionResult( saveResult( anomaly_result, context, variable.getGridSpec(section), inputVar.getVariableMetadata(context.dataManager), inputVar.getDatasetMetadata(context.dataManager) ) )
       }
       else new BlockingExecutionResult( context.id, List(inputVar.getSpec), variable.getGridSpec(section), anomaly_result.data )
     }
