@@ -91,8 +91,8 @@ class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
 
   def getVariable(fragSpec: DataFragmentSpec): CDSVariable = getVariable(fragSpec.collection, fragSpec.varname)
 
-  private def cutExistingFragment(fragSpec: DataFragmentSpec): Option[PartitionedFragment] = findEnclosingFragSpec(fragSpec, FragmentSelectionCriteria.Smallest ) match {
-    case Some(enclosingFragSpec: DataFragmentSpec) => getExistingFragment(enclosingFragSpec) match {
+  private def cutExistingFragment(fragSpec: DataFragmentSpec): Option[PartitionedFragment] = findEnclosingFragSpec(fragSpec.getKey, FragmentSelectionCriteria.Smallest ) match {
+    case Some( fkey: DataFragmentKey) => getExistingFragment(fkey) match {
       case Some(fragmentFuture) =>
         val fragment = Await.result(fragmentFuture, Duration.Inf)
         Some( fragment.cutNewSubset(fragSpec.roi) )
@@ -115,11 +115,12 @@ class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
     }
   }
 
-  private def clearRedundantFragments( fragSpec: DataFragmentSpec ) = findEnclosedFragSpecs(fragSpec).foreach( fragmentCache.remove(_) )
+  private def clearRedundantFragments( fragSpec: DataFragmentSpec ) = findEnclosedFragSpecs(fragSpec.getKey).map(_.toString).foreach( fragmentCache.remove( _ ) )
 
   private def getFragmentFuture( fragSpec: DataFragmentSpec  ): Future[PartitionedFragment] = {
-    val fragFuture = fragmentCache( fragSpec ) { promiseFragment( fragSpec ) _ }
-    fragFuture onComplete { case Success(fragment) => clearRedundantFragments( fragSpec ); case Failure(t) => Unit }
+    val fragFuture = fragmentCache( fragSpec.getKey ) { promiseFragment( fragSpec ) _ }
+//    fragFuture onComplete { case Success(fragment) => clearRedundantFragments( fragSpec ); case Failure(t) => Unit }
+    logger.info( ">>>>>>>>>>>>>>>> Put frag in cache: " + fragSpec.toString + ", keys = " + fragmentCache.keys.mkString("[",",","]") )
     fragFuture
   }
 
@@ -152,28 +153,32 @@ class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
     })
   }
 
-  def getExistingFragment( fragSpec: DataFragmentSpec  ): Option[Future[PartitionedFragment]] = fragmentCache.get( fragSpec )
+  def getExistingFragment( fkey: DataFragmentKey  ): Option[Future[PartitionedFragment]] = {
+    val rv: Option[Future[PartitionedFragment]] = fragmentCache.get( fkey )
+    logger.info( ">>>>>>>>>>>>>>>> Get frag from cache: search key = " + fkey.toString + ", existing keys = " + fragmentCache.keys.mkString("[",",","]") + ", Success = " + rv.isDefined.toString )
+    rv
+  }
 
-  def getFragSpecsForVariable( collection: String, varName: String ): Set[DataFragmentSpec] = fragmentCache.keys.filter(
+  def getFragSpecsForVariable( collection: String, varName: String ): Set[DataFragmentKey] = fragmentCache.keys.filter(
     _ match {
-      case frag: DataFragmentSpec => frag.sameVariable(collection,varName)
+      case fkey: DataFragmentKey => fkey.sameVariable(collection,varName)
       case x => logger.warn("Unexpected fragment key type: " + x.getClass.getName); false
-    }).asInstanceOf[Set[DataFragmentSpec]]
+    }).map( _ match { case fkey: DataFragmentKey => fkey } )
 
-  def findEnclosingFragSpecs(targetFragSpec: DataFragmentSpec): Set[DataFragmentSpec] = {
-    val variableFrags = getFragSpecsForVariable( targetFragSpec.collection, targetFragSpec.varname )
-    variableFrags.filter( _.roi.contains(targetFragSpec.roi) )
+  def findEnclosingFragSpecs( fkey: DataFragmentKey): Set[DataFragmentKey] = {
+    val variableFrags = getFragSpecsForVariable( fkey.collection, fkey.varname )
+    variableFrags.filter( _.getRoi.contains( fkey.getRoi ) )
   }
-  def findEnclosedFragSpecs(targetFragSpec: DataFragmentSpec): Set[DataFragmentSpec] = {
-    val variableFrags = getFragSpecsForVariable( targetFragSpec.collection, targetFragSpec.varname )
-    variableFrags.filter( fragSpec => targetFragSpec.roi.contains( fragSpec.roi ) )
+  def findEnclosedFragSpecs( fkeyParent: DataFragmentKey ): Set[DataFragmentKey] = {
+    val variableFrags = getFragSpecsForVariable( fkeyParent.collection, fkeyParent.varname )
+    variableFrags.filter( fKey => fkeyParent.getRoi.contains( fKey.getRoi ) )
   }
 
-  def findEnclosingFragSpec(targetFragSpec: DataFragmentSpec, selectionCriteria: FragmentSelectionCriteria.Value ): Option[DataFragmentSpec] = {
-    val enclosingFragments = findEnclosingFragSpecs(targetFragSpec)
+  def findEnclosingFragSpec( fkeyChild: DataFragmentKey, selectionCriteria: FragmentSelectionCriteria.Value ): Option[DataFragmentKey] = {
+    val enclosingFragments = findEnclosingFragSpecs(fkeyChild)
     if ( enclosingFragments.isEmpty ) None else Some( selectionCriteria match {
-      case FragmentSelectionCriteria.Smallest => enclosingFragments.minBy(_.roi.computeSize())
-      case FragmentSelectionCriteria.Largest  => enclosingFragments.maxBy(_.roi.computeSize())
+      case FragmentSelectionCriteria.Smallest => enclosingFragments.minBy(_.getRoi.computeSize())
+      case FragmentSelectionCriteria.Largest  => enclosingFragments.maxBy(_.getRoi.computeSize())
     } )
   }
 }
@@ -222,12 +227,17 @@ class CDS2ExecutionManager( val serverConfiguration: Map[String,String] ) {
 
   def blockingExecute( request: TaskRequest, run_args: Map[String,String] ): xml.Elem =  {
     logger.info("Blocking Execute { runargs: " + run_args.toString + ",  request: " + request.toString + " }")
+    val t0 = System.nanoTime
     try {
       val sourceContainers = request.variableMap.values.filter(_.isSource)
       for (data_container: DataContainer <- request.variableMap.values; if data_container.isSource) {
         collectionDataManager.loadVariableData(data_container, request.getDomain(data_container.getSource))
       }
-      executeWorkflows(request, run_args).toXml
+      val t1 = System.nanoTime
+      val rv = executeWorkflows(request, run_args).toXml
+      val t2 = System.nanoTime
+      logger.info( "Execute Completed: LoadVariablesT> %.4f, ExecuteWorkflowT> %.4f, totalT> %.4f ".format( (t1-t0)/1.0E9, (t2-t1)/1.0E9, (t2-t0)/1.0E9 ) )
+      rv
     } catch {
       case err: Exception => <error> {fatal(err)} </error>
     }
@@ -433,7 +443,7 @@ object exeConcurrencyTest extends App {
 }
 
 object executionTest extends App {
-  val request = SampleTaskRequests.getCreateVRequest
+  val request = SampleTaskRequests.getSubsetRequest
   val async = false
   val run_args = Map( "async" -> async.toString )
   val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
