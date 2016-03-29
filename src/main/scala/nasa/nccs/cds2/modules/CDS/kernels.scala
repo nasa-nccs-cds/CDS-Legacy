@@ -31,6 +31,7 @@ class CDS extends KernelModule with KernelTools {
       val t1 = System.nanoTime
       logger.info("Kernel %s: Executed operation %s, time= %.4f s, result = %s ".format(name, operation, (t1-t0)/1.0E9, mean_val.toString ))
       val variable = context.dataManager.getVariable( inputVar.getSpec )
+      val variableMetadata = inputVar.getVariableMetadata( context.dataManager )
       val section = inputVar.getSpec.getReducedSection(Set(axes:_*))
       if(context.async) {
         new AsyncExecutionResult( saveResult( mean_val, context, variable.getGridSpec(section), inputVar.getVariableMetadata(context.dataManager), inputVar.getDatasetMetadata(context.dataManager) ) )
