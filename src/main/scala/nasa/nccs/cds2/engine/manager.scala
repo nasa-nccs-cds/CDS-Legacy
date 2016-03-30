@@ -107,8 +107,9 @@ class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
       case Success(variable) =>
         try {
           val t0 = System.nanoTime()
-          val result = variable.loadRoi( fragSpec )
-          logger.info("Completed variable (%s:%s) subset data input in time %.4f sec, section = %s ".format(fragSpec.collection, fragSpec.varname, (System.nanoTime()-t0)/1.0E9, fragSpec.roi ))
+          val result: PartitionedFragment = variable.loadRoi( fragSpec )
+          logger.info("Completed variable (%s:%s) subset data input in time %.4f sec, section = %s, sample data = [ %s ] ".format(fragSpec.collection, fragSpec.varname, (System.nanoTime()-t0)/1.0E9, fragSpec.roi, result.sampleDataString(20,20) ))
+          logger.info("Data column = [ %s ]".format( ( 0 until result.shape(0) ).map( index => result.getValue( Array(index,0,100,100) ) ).mkString(", ") ) )
           p.success( result )
         } catch { case e: Exception => p.failure(e) }
       case Failure(t) => p.failure(t)
@@ -348,14 +349,14 @@ object SampleTaskRequests {
   def getTimeSliceAnomaly: TaskRequest = {
     val dataInputs = Map(
       "domain" -> List( Map("name" -> "d0", "lat" -> Map("start" -> 10, "end" -> 10, "system" -> "values"), "lon" -> Map("start" -> 10, "end" -> 10, "system" -> "values"), "lev" -> Map("start" -> 8, "end" -> 8, "system" -> "indices"))),
-      "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "hur:v0", "domain" -> "d0")),
+      "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "t:v0", "domain" -> "d0")),
       "operation" -> List(Map("unparsed" -> "( v0, axes: t )")))
     TaskRequest( "CDS.anomaly", dataInputs )
   }
 
   def getCacheRequest: TaskRequest = {
     val dataInputs = Map(
-      "domain" -> List( Map("name" -> "d0",  "lev" -> Map("start" -> 3, "end" -> 3, "system" -> "indices"))),
+      "domain" -> List( Map("name" -> "d0",  "lev" -> Map("start" -> 100000, "end" -> 100000, "system" -> "values"))),
       "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "ta:v0", "domain" -> "d0")) )
     TaskRequest( "util.cache", dataInputs )
   }
@@ -370,8 +371,8 @@ object SampleTaskRequests {
 
   def getAnomalyTest: TaskRequest = {
     val dataInputs = Map(
-      "domain" ->  List(Map("name" -> "d0", "lat" -> Map("start" -> 10, "end" -> 10, "system" -> "values"), "lon" -> Map("start" -> 10, "end" -> 10, "system" -> "values"), "lev" -> Map("start" -> 8, "end" -> 8, "system" -> "indices"))),
-      "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "hur:v0", "domain" -> "d0")),
+      "domain" ->  List(Map("name" -> "d0", "lat" -> Map("start" -> -7.0854263, "end" -> -7.0854263, "system" -> "values"), "lon" -> Map("start" -> -122.075, "end" -> -122.075, "system" -> "values"), "lev" -> Map("start" -> 100000, "end" -> 100000, "system" -> "values"))),
+      "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "ta:v0", "domain" -> "d0")),
       "operation" -> List(Map("unparsed" -> "(v0,axes:t)")))
     TaskRequest( "CDS.anomaly", dataInputs )
   }
@@ -443,7 +444,7 @@ object exeConcurrencyTest extends App {
 }
 
 object executionTest extends App {
-  val request = SampleTaskRequests.getSubsetRequest
+  val request = SampleTaskRequests.getAnomalyTest
   val async = false
   val run_args = Map( "async" -> async.toString )
   val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
@@ -467,6 +468,17 @@ object executionTest extends App {
   }
 }
 
+object execAnomalyWithCacheTest extends App {
+  val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
+  val run_args = Map( "async" -> "false" )
+
+  val cache_request = SampleTaskRequests.getCacheRequest
+  val cache_result = cds2ExecutionManager.blockingExecute(cache_request, run_args)
+
+  val request = SampleTaskRequests.getAnomalyTest
+  val final_result = cds2ExecutionManager.blockingExecute(request, run_args)
+}
+
 object parseTest extends App {
   val axes = "c,,,"
   val r = axes.split(",").map(_.head).toList
@@ -475,7 +487,7 @@ object parseTest extends App {
 
 object arrayTest extends App {
   val array = Nd4j.create( Array.fill[Float](40)(1f), Array(10,2,2))
-  val tensor = new Nd4jMaskedTensor(array)
+  val tensor = new Nd4jMaskedTensor( array, Float.MaxValue )
   array.putScalar( Array(1,1,0), 3.0 )
   array.putScalar( Array(1,1,1), 3.0 )
   println( "init data = [ %s ]".format( tensor.data.mkString(",")) )
