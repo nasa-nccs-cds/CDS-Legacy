@@ -91,16 +91,20 @@ class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
 
   def getVariable(fragSpec: DataFragmentSpec): CDSVariable = getVariable(fragSpec.collection, fragSpec.varname)
 
-  private def cutExistingFragment(fragSpec: DataFragmentSpec): Option[PartitionedFragment] = findEnclosingFragSpec(fragSpec.getKey, FragmentSelectionCriteria.Smallest ) match {
+  private def cutExistingFragment( fragSpec: DataFragmentSpec, abortSizeFraction: Float=0f ): Option[PartitionedFragment] = findEnclosingFragSpec(fragSpec.getKey, FragmentSelectionCriteria.Smallest ) match {
     case Some( fkey: DataFragmentKey) => getExistingFragment(fkey) match {
       case Some(fragmentFuture) =>
-        val fragment = Await.result(fragmentFuture, Duration.Inf)
-        Some( fragment.cutNewSubset(fragSpec.roi) )
-      case None => cutExistingFragment(fragSpec)
+        if (!fragmentFuture.isCompleted && (fkey.getSize * abortSizeFraction > fragSpec.getSize)) {
+          logger.info( "Cache Chunk[%s] found but not yet ready, abandoning cache access attempt".format( fkey.shape.mkString(",")) )
+          None
+        } else {
+          val fragment = Await.result(fragmentFuture, Duration.Inf)
+          Some(fragment.cutNewSubset(fragSpec.roi))
+        }
+      case None => cutExistingFragment( fragSpec, abortSizeFraction )
     }
     case None => None
   }
-
 
   private def promiseFragment( fragSpec: DataFragmentSpec )(p: Promise[PartitionedFragment]): Unit = {
     getVariableFuture( fragSpec.collection, fragSpec.varname )  onComplete {
@@ -108,8 +112,8 @@ class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
         try {
           val t0 = System.nanoTime()
           val result: PartitionedFragment = variable.loadRoi( fragSpec )
-          logger.info("Completed variable (%s:%s) subset data input in time %.4f sec, section = %s, sample data = [ %s ] ".format(fragSpec.collection, fragSpec.varname, (System.nanoTime()-t0)/1.0E9, fragSpec.roi, result.sampleDataString(20,20) ))
-          logger.info("Data column = [ %s ]".format( ( 0 until result.shape(0) ).map( index => result.getValue( Array(index,0,100,100) ) ).mkString(", ") ) )
+          logger.info("Completed variable (%s:%s) subset data input in time %.4f sec, section = %s ".format(fragSpec.collection, fragSpec.varname, (System.nanoTime()-t0)/1.0E9, fragSpec.roi ))
+//          logger.info("Data column = [ %s ]".format( ( 0 until result.shape(0) ).map( index => result.getValue( Array(index,0,100,100) ) ).mkString(", ") ) )
           p.success( result )
         } catch { case e: Exception => p.failure(e) }
       case Failure(t) => p.failure(t)
@@ -120,15 +124,15 @@ class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
 
   private def getFragmentFuture( fragSpec: DataFragmentSpec  ): Future[PartitionedFragment] = {
     val fragFuture = fragmentCache( fragSpec.getKey ) { promiseFragment( fragSpec ) _ }
-//    fragFuture onComplete { case Success(fragment) => clearRedundantFragments( fragSpec ); case Failure(t) => Unit }
+    fragFuture onComplete { case Success(fragment) => clearRedundantFragments( fragSpec ); case Failure(t) => Unit }
     logger.info( ">>>>>>>>>>>>>>>> Put frag in cache: " + fragSpec.toString + ", keys = " + fragmentCache.keys.mkString("[",",","]") )
     fragFuture
   }
 
-  def getFragment( fragSpec: DataFragmentSpec  ): PartitionedFragment = cutExistingFragment(fragSpec) getOrElse {
+  def getFragment( fragSpec: DataFragmentSpec, abortSizeFraction: Float=0f  ): PartitionedFragment = cutExistingFragment( fragSpec, abortSizeFraction ) getOrElse {
     val fragmentFuture = getFragmentFuture( fragSpec )
     val result = Await.result( fragmentFuture, Duration.Inf )
-    logger.info("Loaded variable (%s:%s) existing subset data, section = %s ".format(fragSpec.collection, fragSpec.varname, fragSpec.roi ))
+    logger.info("Loaded variable (%s:%s) subset data, section = %s ".format(fragSpec.collection, fragSpec.varname, fragSpec.roi ))
     result
   }
 
@@ -168,11 +172,11 @@ class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
 
   def findEnclosingFragSpecs( fkey: DataFragmentKey): Set[DataFragmentKey] = {
     val variableFrags = getFragSpecsForVariable( fkey.collection, fkey.varname )
-    variableFrags.filter( _.getRoi.contains( fkey.getRoi ) )
+    variableFrags.filter( fkeyParent => fkeyParent.containsSmaller( fkey ) )
   }
   def findEnclosedFragSpecs( fkeyParent: DataFragmentKey ): Set[DataFragmentKey] = {
     val variableFrags = getFragSpecsForVariable( fkeyParent.collection, fkeyParent.varname )
-    variableFrags.filter( fKey => fkeyParent.getRoi.contains( fKey.getRoi ) )
+    variableFrags.filter( fkey => fkeyParent.containsSmaller( fkey ) )
   }
 
   def findEnclosingFragSpec( fkeyChild: DataFragmentKey, selectionCriteria: FragmentSelectionCriteria.Value ): Option[DataFragmentKey] = {

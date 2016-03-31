@@ -54,7 +54,7 @@ class CDS extends KernelModule with KernelTools {
       val t10 = System.nanoTime
       val mean_val_masked = input_array.mean( axes:_* )
       val t11 = System.nanoTime
-      println("Mean_val_masked, time = %.4f s, result = %s".format( (t11-t10)/1.0E9, mean_val_masked.toString ) )
+      logger.info("Mean_val_masked, time = %.4f s, result = %s".format( (t11-t10)/1.0E9, mean_val_masked.toString ) )
       val variable = context.dataManager.getVariable( inputVar.getSpec )
       val section = inputVar.getSpec.getReducedSection(Set(axes:_*))
       if(context.async) {
@@ -82,7 +82,7 @@ class CDS extends KernelModule with KernelTools {
         case Some(domain_id) => context.dataManager.getSubset( input_uids.head, context.getFragmentSpec(input_uids.head), context.getDomain(domain_id) )
       }
       val t1 = System.nanoTime
-      println("Subset: time = %.4f s, result = %s, value = [ %s ]".format( (t1-t0)/1.0E9, result.toString, result.data.data.mkString(",") ) )
+      logger.info("Subset: time = %.4f s, result = %s, value = %s".format( (t1-t0)/1.0E9, result.toString, result.data.toRawDataString ) )
       val variable = context.dataManager.getVariable( inputVar.getSpec )
       val section = inputVar.getSpec.getSubSection(result.fragmentSpec.roi)
       if(context.async) {
@@ -111,10 +111,10 @@ class CDS extends KernelModule with KernelTools {
       assert( axes.length == 1, "Must bin over 1 axis only! Requested: " + axes.mkString(",") )
       val binned_value: Option[Nd4jMaskedTensor] = input_array.bin(axes.head,binFactory)
       val t11 = System.nanoTime
-      println("Binned array, time = %.4f s, result = %s".format( (t11-t10)/1.0E9, binned_value.toString ) )
       binned_value match {
         case None => throw new Exception("Empty Bins");
         case Some(masked_array) =>
+          logger.info("Binned array, time = %.4f s, result = %s".format( (t11-t10)/1.0E9, masked_array.toRawDataString ) )
           val variable = context.dataManager.getVariable( inputVar.getSpec )
           val section = inputVar.getSpec.getReducedSection(Set(axes(0)),masked_array.shape(axes(0)))
           if (context.async) {
@@ -143,7 +143,7 @@ class CDS extends KernelModule with KernelTools {
       val variable = context.dataManager.getVariable( inputVar.getSpec )
       val section = inputVar.getSpec.roi
       val t11 = System.nanoTime
-      println("Anomaly, time = %.4f s, invalid = %f, input_array samples = [ %s ]".format( (t11-t10)/1.0E9, input_array.invalid, (0 to 100 by 10).map( input_array.sampleValue(_) ).mkString(",") ) )
+      logger.info("Anomaly, time = %.4f s".format( (t11-t10)/1.0E9 ) )
       if(context.async) {
         new AsyncExecutionResult( saveResult( anomaly_result, context, variable.getGridSpec(section), inputVar.getVariableMetadata(context.dataManager), inputVar.getDatasetMetadata(context.dataManager) ) )
       }
