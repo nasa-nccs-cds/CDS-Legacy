@@ -170,17 +170,17 @@ class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
       case x => logger.warn("Unexpected fragment key type: " + x.getClass.getName); false
     }).map( _ match { case fkey: DataFragmentKey => fkey } )
 
-  def findEnclosingFragSpecs( fkey: DataFragmentKey): Set[DataFragmentKey] = {
+  def findEnclosingFragSpecs( fkey: DataFragmentKey, admitEquality: Boolean = true ): Set[DataFragmentKey] = {
     val variableFrags = getFragSpecsForVariable( fkey.collection, fkey.varname )
-    variableFrags.filter( fkeyParent => fkeyParent.containsSmaller( fkey ) )
+    variableFrags.filter( fkeyParent => fkeyParent.contains( fkey, admitEquality ) )
   }
-  def findEnclosedFragSpecs( fkeyParent: DataFragmentKey ): Set[DataFragmentKey] = {
+  def findEnclosedFragSpecs( fkeyParent: DataFragmentKey, admitEquality: Boolean = false ): Set[DataFragmentKey] = {
     val variableFrags = getFragSpecsForVariable( fkeyParent.collection, fkeyParent.varname )
-    variableFrags.filter( fkey => fkeyParent.containsSmaller( fkey ) )
+    variableFrags.filter( fkey => fkeyParent.contains( fkey, admitEquality ) )
   }
 
-  def findEnclosingFragSpec( fkeyChild: DataFragmentKey, selectionCriteria: FragmentSelectionCriteria.Value ): Option[DataFragmentKey] = {
-    val enclosingFragments = findEnclosingFragSpecs(fkeyChild)
+  def findEnclosingFragSpec( fkeyChild: DataFragmentKey, selectionCriteria: FragmentSelectionCriteria.Value, admitEquality: Boolean = true ): Option[DataFragmentKey] = {
+    val enclosingFragments = findEnclosingFragSpecs( fkeyChild, admitEquality )
     if ( enclosingFragments.isEmpty ) None else Some( selectionCriteria match {
       case FragmentSelectionCriteria.Smallest => enclosingFragments.minBy(_.getRoi.computeSize())
       case FragmentSelectionCriteria.Largest  => enclosingFragments.maxBy(_.getRoi.computeSize())
@@ -476,8 +476,18 @@ object execAnomalyWithCacheTest extends App {
   val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
   val run_args = Map( "async" -> "false" )
 
+  println( ">>>>>>>>>>>>>>>>>>>>>>>>>> Start CACHE REQUEST "  )
+  val t1 = System.nanoTime
   val cache_request = SampleTaskRequests.getCacheRequest
   val cache_result = cds2ExecutionManager.blockingExecute(cache_request, run_args)
+  val t2 = System.nanoTime
+  println( ">>>>>>>>>>>>>>>>>>>>>>>>>> Cache1: %.4f".format((t2-t1)/1.0E9) )
+
+  val cache_request1 = SampleTaskRequests.getCacheRequest
+  val cache_result1 = cds2ExecutionManager.blockingExecute(cache_request, run_args)
+  val t3 = System.nanoTime
+  println( ">>>>>>>>>>>>>>>>>>>>>>>>>> Cache2: %.4f".format((t3-t2)/1.0E9) )
+
 
   val request = SampleTaskRequests.getAnomalyTest
   val final_result = cds2ExecutionManager.blockingExecute(request, run_args)
