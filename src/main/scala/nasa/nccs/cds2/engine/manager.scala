@@ -300,10 +300,9 @@ class CDS2ExecutionManager( val serverConfiguration: Map[String,String] ) {
     getKernel( operation.name.toLowerCase ).execute( getExecutionContext(operation, domainMap, run_args) )
   }
   def getExecutionContext( operation: OperationContainer, domainMap: Map[String,DomainContainer], run_args: Map[String, String] ): ExecutionContext = {
-    val fragments: List[KernelDataInput] = for( uid <- operation.inputs ) yield new KernelDataInput( collectionDataManager.getVariableData(uid), collectionDataManager.getAxisIndices(uid) )
-    val binArrayOpt = collectionDataManager.getBinnedArrayFactory( operation )
-    val args = operation.optargs ++ run_args
-    new ExecutionContext( operation.identifier, fragments, binArrayOpt, domainMap, collectionDataManager, serverConfiguration, args )
+    operation.addConfiguration( "run", run_args )
+    operation.addConfiguration( "server", serverConfiguration )
+    new ExecutionContext( operation, domainMap, collectionDataManager )
   }
 }
 
@@ -311,7 +310,7 @@ object SampleTaskRequests {
 
   def getAveTimeseries: TaskRequest = {
     import nasa.nccs.esgf.process.DomainAxis.Type._
-    val workflows = List[WorkflowContainer]( new WorkflowContainer( operations = List( new OperationContainer( identifier = "CDS.average~ivar#1",  name ="CDS.average", result = "ivar#1", inputs = List("v0"), optargs = Map("axis" -> "t") )  ) ) )
+    val workflows = List[WorkflowContainer]( new WorkflowContainer( operations = List( new OperationContainer( identifier = "CDS.average~ivar#1",  name ="CDS.average", result = "ivar#1", inputs = List("v0"), ("axis" -> "t") ) ) ) )
     val variableMap = Map[String,DataContainer]( "v0" -> new DataContainer( uid="v0", source = Some(new DataSource( name = "hur", collection = "merra/mon/atmos", domain = "d0" ) ) ) )
     val domainMap = Map[String,DomainContainer]( "d0" -> new DomainContainer( name = "d0", axes = cdsutils.flatlist( DomainAxis(Lev,1,1), DomainAxis(Lat,100,100), DomainAxis(Lon,100,100) ) ) )
     new TaskRequest( "CDS.average", variableMap, domainMap, workflows )
@@ -383,7 +382,7 @@ object SampleTaskRequests {
 
   def getAveArray: TaskRequest = {
     import nasa.nccs.esgf.process.DomainAxis.Type._
-    val workflows = List[WorkflowContainer]( new WorkflowContainer( operations = List( new OperationContainer( identifier = "CDS.average~ivar#1",  name ="CDS.average", result = "ivar#1", inputs = List("v0"), optargs = Map("axis" -> "xy") )  ) ) )
+    val workflows = List[WorkflowContainer]( new WorkflowContainer( operations = List( new OperationContainer( identifier = "CDS.average~ivar#1",  name ="CDS.average", result = "ivar#1", inputs = List("v0"), ("axis" -> "xy")  ) ) ) )
     val variableMap = Map[String,DataContainer]( "v0" -> new DataContainer( uid="v0", source = Some(new DataSource( name = "hur", collection = "merra/mon/atmos", domain = "d0" ) ) ) )
     val domainMap = Map[String,DomainContainer]( "d0" -> new DomainContainer( name = "d0", axes = cdsutils.flatlist( DomainAxis(Lev,4,4), DomainAxis(Lat,100,100) ) ) )
     new TaskRequest( "CDS.average", variableMap, domainMap, workflows )
@@ -417,7 +416,7 @@ object SampleTaskRequests {
 
 object exeSyncTest extends App {
   import nasa.nccs.esgf.process.DomainAxis.Type._
-  val operationContainer =  new OperationContainer( identifier = "CDS.average~ivar#1",  name ="CDS.average", result = "ivar#1", inputs = List("v0"), optargs = Map("axis" -> "xy") )
+  val operationContainer =  new OperationContainer( identifier = "CDS.average~ivar#1",  name ="CDS.average", result = "ivar#1", inputs = List("v0"), ("axis" -> "xy") )
   val dataContainer = new DataContainer( uid="v0", source = Some(new DataSource( name = "hur", collection = "merra/mon/atmos", domain = "d0" ) ) )
   val domainContainer = new DomainContainer( name = "d0", axes = cdsutils.flatlist( DomainAxis(Lev,6,6) ) )
   val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
@@ -432,7 +431,7 @@ object exeSyncTest extends App {
 
 object exeConcurrencyTest extends App {
   import nasa.nccs.esgf.process.DomainAxis.Type._
-  val operationContainer =  new OperationContainer( identifier = "CDS.average~ivar#1",  name ="CDS.average", result = "ivar#1", inputs = List("v0"), optargs = Map("axis" -> "xy") )
+  val operationContainer =  new OperationContainer( identifier = "CDS.average~ivar#1",  name ="CDS.average", result = "ivar#1", inputs = List("v0"), ("axis" -> "xy") )
   val dataContainer = new DataContainer( uid="v0", source = Some(new DataSource( name = "hur", collection = "merra/mon/atmos", domain = "d0" ) ) )
   val domainContainer = new DomainContainer( name = "d0", axes = cdsutils.flatlist( DomainAxis(Lev,10,10) ) )
   val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
@@ -472,6 +471,14 @@ object executionTest extends App {
   }
 }
 
+object execAnomalyTest extends App {
+  val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
+  val run_args = Map( "async" -> "false" )
+  val request = SampleTaskRequests.getAnomalyTest
+  val final_result = cds2ExecutionManager.blockingExecute(request, run_args)
+  println( ">>>> Final Result: " + final_result.toString() )
+}
+
 object execAnomalyWithCacheTest extends App {
   val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
   val run_args = Map( "async" -> "false" )
@@ -491,6 +498,7 @@ object execAnomalyWithCacheTest extends App {
 
   val request = SampleTaskRequests.getAnomalyTest
   val final_result = cds2ExecutionManager.blockingExecute(request, run_args)
+  println( ">>>> Final Result: " + final_result.toString() )
 }
 
 object parseTest extends App {

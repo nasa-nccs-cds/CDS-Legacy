@@ -21,8 +21,8 @@ class CDS extends KernelModule with KernelTools {
     override val description = "Raw Average over Input Fragment"
 
     def execute( context: ExecutionContext ): ExecutionResult = {
-      val inputVar: KernelDataInput  =  context.fragments.head
-      val optargs: Map[String,String] =  context.args
+      val inputVar: KernelDataInput  =  context.inputs.head
+      val optargs: Map[String,String] =  context.getConfiguration("operation")
       val input_array = inputVar.dataFragment.data
       val axisSpecs = inputVar.axisIndices
       val axes = axisSpecs.getAxes
@@ -46,8 +46,8 @@ class CDS extends KernelModule with KernelTools {
     override val description = "Average over Input Fragment"
 
     def execute(context: ExecutionContext ): ExecutionResult = {
-      val inputVar: KernelDataInput  =  context.fragments.head
-      val optargs: Map[String,String] =  context.args
+      val inputVar: KernelDataInput  =  context.inputs.head
+      val optargs: Map[String,String] =  context.getConfiguration("operation")
       val input_array = inputVar.dataFragment.data
       val axisSpecs = inputVar.axisIndices
       val axes = axisSpecs.getAxes
@@ -69,15 +69,15 @@ class CDS extends KernelModule with KernelTools {
     override val description = "Average over Input Fragment"
 
     def execute(context: ExecutionContext ): ExecutionResult = {
-      val inputVar: KernelDataInput  =  context.fragments.head
-      val optargs: Map[String,String] =  context.args
+      val inputVar: KernelDataInput  =  context.inputs.head
+      val optargs: Map[String,String] =  context.getConfiguration("operation")
       val input_array = inputVar.dataFragment
       val axisSpecs = inputVar.axisIndices
       val axes = axisSpecs.getAxes
       val t0 = System.nanoTime
       def input_uids = context.getDataSources.keySet
       assert( input_uids.size == 1, "Wrong number of arguments to 'subset': %d ".format(input_uids.size) )
-      val result: PartitionedFragment = context.args.get("domain") match {
+      val result: PartitionedFragment = optargs.get("domain") match {
         case None => input_array
         case Some(domain_id) => context.dataManager.getSubset( input_uids.head, context.getFragmentSpec(input_uids.head), context.getDomain(domain_id) )
       }
@@ -98,8 +98,8 @@ class CDS extends KernelModule with KernelTools {
     override val description = "Binning over Input Fragment"
 
     def execute( context: ExecutionContext ): ExecutionResult = {
-      val inputVar: KernelDataInput  =  context.fragments.head
-      val optargs: Map[String,String] =  context.args
+      val inputVar: KernelDataInput  =  context.inputs.head
+      val optargs: Map[String,String] =  context.getConfiguration("operation")
       val input_array: Nd4jMaskedTensor = inputVar.dataFragment.data
       val axisSpecs = inputVar.axisIndices
       val axes = axisSpecs.getAxes
@@ -131,8 +131,8 @@ class CDS extends KernelModule with KernelTools {
     override val description = "Anomaly over Input Fragment"
 
     def execute(context: ExecutionContext ): ExecutionResult = {
-      val inputVar: KernelDataInput  =  context.fragments.head
-      val optargs: Map[String,String] =  context.args
+      val inputVar: KernelDataInput  =  context.inputs.head
+      val optargs: Map[String,String] =  context.getConfiguration("operation")
       val input_array: Nd4jMaskedTensor = inputVar.dataFragment.data
       val axisSpecs = inputVar.axisIndices
       val axes = axisSpecs.getAxes
