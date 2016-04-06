@@ -191,7 +191,7 @@ class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
 object collectionDataCache extends CollectionDataCacheMgr()
 
 class CDS2ExecutionManager( val serverConfiguration: Map[String,String] ) {
-  val collectionDataManager = new ServerContext( collectionDataCache, serverConfiguration )
+  val serverContext = new ServerContext( collectionDataCache, serverConfiguration )
   val logger = LoggerFactory.getLogger(this.getClass)
   val kernelManager = new KernelMgr()
   private val counter = new Counter
@@ -225,7 +225,7 @@ class CDS2ExecutionManager( val serverConfiguration: Map[String,String] ) {
   def loadInputData( request: TaskRequest, run_args: Map[String,String] ): RequestContext = {
     val sourceContainers = request.variableMap.values.filter(_.isSource)
     val sources = for (data_container: DataContainer <- request.variableMap.values; if data_container.isSource)
-      yield collectionDataManager.loadVariableData(data_container, request.getDomain(data_container.getSource) )
+      yield serverContext.loadVariableData(data_container, request.getDomain(data_container.getSource) )
     new RequestContext( request.domainMap, Map(sources.toSeq:_*), run_args )
   }
 
@@ -253,7 +253,7 @@ class CDS2ExecutionManager( val serverConfiguration: Map[String,String] ) {
 //    try {
 //      val sourceContainers = request.variableMap.values.filter(_.isSource)
 //      val inputFutures: Iterable[Future[OperationInputSpec]] = for (data_container: DataContainer <- request.variableMap.values; if data_container.isSource) yield {
-//        collectionDataManager.dataLoader.loadVariableDataFuture(data_container, request.getDomain(data_container.getSource))
+//        serverContext.dataLoader.loadVariableDataFuture(data_container, request.getDomain(data_container.getSource))
 //      }
 //      inputFutures.flatMap( inputFuture => for( input <- inputFuture ) yield executeWorkflows(request, run_args).toXml )
 //    } catch {
@@ -298,7 +298,7 @@ class CDS2ExecutionManager( val serverConfiguration: Map[String,String] ) {
   }
 
   def operationExecution(operationCx: OperationContext, requestCx: RequestContext): ExecutionResult = {
-    getKernel( operationCx.name.toLowerCase ).execute( operationCx, requestCx, collectionDataManager )
+    getKernel( operationCx.name.toLowerCase ).execute( operationCx, requestCx, serverContext )
   }
 }
 
@@ -431,9 +431,9 @@ object exeConcurrencyTest extends App {
   val dataContainer = new DataContainer( uid="v0", source = Some(new DataSource( name = "hur", collection = "merra/mon/atmos", domain = "d0" ) ) )
   val domainContainer = new DomainContainer( name = "d0", axes = cdsutils.flatlist( DomainAxis(Lev,10,10) ) )
   val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
-  cds2ExecutionManager.collectionDataManager.dataLoader.getVariable( dataContainer.getSource.collection, dataContainer.getSource.name )
+  cds2ExecutionManager.serverContext.dataLoader.getVariable( dataContainer.getSource.collection, dataContainer.getSource.name )
   val t0 = System.nanoTime
-//  val futurePartitionedFragment: Future[PartitionedFragment] = cds2ExecutionManager.collectionDataManager.dataLoader.loadDataFragmentFuture( dataContainer, domainContainer )
+//  val futurePartitionedFragment: Future[PartitionedFragment] = cds2ExecutionManager.serverContext.dataLoader.loadDataFragmentFuture( dataContainer, domainContainer )
   val futurePartitionedFragment: Future[PartitionedFragment]  = SampleTaskRequests.getFragmentSyncFuture( dataContainer, domainContainer )
   val t1 = System.nanoTime
   println("Got Future, time = %.4f".format((t1-t0)/1.0E9))
