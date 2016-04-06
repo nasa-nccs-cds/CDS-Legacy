@@ -12,10 +12,10 @@ import scala.collection.mutable
 
 object collectionRDDDataCache extends CollectionDataCacheMgr()
 
-class RDDataManager( dataLoader: DataLoader ) extends DataManager( dataLoader ) {
-  val collectionRDDataManager = new RDDataManager( collectionRDDDataCache )
-  var prdds = mutable.Map[String, RDD[PartitionedFragment]]()
-
+//class RDDataManager( dataLoader: DataLoader ) extends ServerContext( dataLoader ) {
+//  val collectionRDDataManager = new RDDataManager(collectionRDDDataCache)
+//  var prdds = mutable.Map[String, RDD[PartitionedFragment]]()
+//}
 //  def loadRDData(cdsContext: CDSparkContext, data_container: DataContainer, domain_container: DomainContainer, nPart: Int): RDD[PartitionedFragment] = {
 //    val uid: String = data_container.uid
 //    val data_source: DataSource = data_container.getSource
@@ -32,7 +32,7 @@ class RDDataManager( dataLoader: DataLoader ) extends DataManager( dataLoader ) 
 //        pRDD
 //    }
 //  }
-}
+
 
 //class CDSparkExecutionManager( val cdsContext: CDSparkContext ) extends CDS2ExecutionManager {
 //
