@@ -376,6 +376,14 @@ object SampleTaskRequests {
     TaskRequest( "CDS.anomaly", dataInputs )
   }
 
+  def getAnomalyArrayTest: TaskRequest = {
+    val dataInputs = Map(
+      "domain" ->  List(Map("name" -> "d0", "lat" -> Map("start" -> -10.0, "end" -> 30.0, "system" -> "values"), "lon" -> Map("start" -> 0.0, "end" -> 60.0, "system" -> "values"), "lev" -> Map("start" -> 100000, "end" -> 100000, "system" -> "values"))),
+      "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "ta:v0", "domain" -> "d0")),
+      "operation" -> List(Map("unparsed" -> "(v0,axes:t)")))
+    TaskRequest( "CDS.anomaly", dataInputs )
+  }
+
   def getAveArray: TaskRequest = {
     import nasa.nccs.esgf.process.DomainAxis.Type._
     val workflows = List[WorkflowContainer]( new WorkflowContainer( operations = List( new OperationContext( identifier = "CDS.average~ivar#1",  name ="CDS.average", result = "ivar#1", inputs = List("v0"), Map("axis" -> "xy")  ) ) ) )
@@ -470,7 +478,7 @@ object executionTest extends App {
 object execAnomalyTest extends App {
   val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
   val run_args = Map( "async" -> "false" )
-  val request = SampleTaskRequests.getAnomalyTest
+  val request = SampleTaskRequests.getAnomalyArrayTest
   val final_result = cds2ExecutionManager.blockingExecute(request, run_args)
   println( ">>>> Final Result: " + final_result.toString() )
 }
