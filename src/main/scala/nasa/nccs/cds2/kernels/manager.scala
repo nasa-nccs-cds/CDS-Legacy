@@ -10,7 +10,7 @@ class KernelMgr(  ) {
 
   val kernelModules = collectKernelModules()
 
-  def getModule( moduleName: String ): Option[KernelModule] = kernelModules.get(moduleName)
+  def getModule( moduleName: String ): Option[KernelModule] = kernelModules.get( moduleName.toLowerCase )
 
   def getModuleNames: List[String] = kernelModules.keys.toList
 
