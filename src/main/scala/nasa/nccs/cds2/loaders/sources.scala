@@ -15,7 +15,7 @@ class AxisNames( val nameMap: Map[Char,String]  ) {
 }
 
 object Collections {
-  val CreateIP = Map(
+  val datasets = Map(
     "merra/mon/atmos" -> Collection( ctype="dods", url="http://dataserver.nccs.nasa.gov/thredds/dodsC/bypass/CREATE-IP/MERRA/mon/atmos", vars=List( "va", "ta", "clt", "ua", "psl", "hus"  )  ),
     "cfsr/mon/atmos"  -> Collection( ctype="dods", url="http://dataserver.nccs.nasa.gov/thredds/dodsC/bypass/CREATE-IP/CFSR/mon/atmos",  vars=List( "va", "ta", "clt", "ua", "psl", "hus"  )  ),
     "ecmwf/mon/atmos" -> Collection( ctype="dods", url="http://dataserver.nccs.nasa.gov/thredds/dodsC/bypass/CREATE-IP/ECMWF/mon/atmos", vars=List( "va", "ta", "clt", "ua", "psl", "hus"  )  ),
@@ -23,6 +23,15 @@ object Collections {
     "cfsr/6hr/atmos"  -> Collection( ctype="dods", url="http://dataserver.nccs.nasa.gov/thredds/dodsC/bypass/CREATE-IP/CFSR/6hr/atmos",  vars=List( "va", "ta", "clt", "ua", "psl", "hus"  )  ),
     "ecmwf/6hr/atmos" -> Collection( ctype="dods", url="http://dataserver.nccs.nasa.gov/thredds/dodsC/bypass/CREATE-IP/ECMWF/6hr/atmos", vars=List( "va", "ta", "clt", "ua", "psl", "hus"  )  )
   )
+  def toXml(): xml.Elem = {
+    <collections> { datasets.keys.map( id => <collection id={id} /> ) } </collections>
+  }
+  def toXml( collectionId: String ): xml.Elem = {
+    datasets.get( collectionId ) match {
+      case Some(collection) => <collection id={collectionId}> { collection.vars.mkString(",") } </collection>
+      case None => <error> { "Invalid collection id:" + collectionId } </error>
+    }
+  }
 }
 
 

@@ -4,7 +4,7 @@ import nasa.nccs.cdapi.cdm.{BinnedArrayFactory, KernelDataInput, PartitionedFrag
 import nasa.nccs.cdapi.kernels._
 import nasa.nccs.cdapi.tensors.Nd4jMaskedTensor
 import nasa.nccs.cds2.kernels.KernelTools
-import nasa.nccs.esgf.process.{ServerContext, DataSource, OperationContext, RequestContext}
+import nasa.nccs.esgf.process._
 import org.nd4j.linalg.api.ndarray.INDArray
 
 import scala.reflect.runtime._
@@ -92,6 +92,31 @@ class CDS extends KernelModule with KernelTools {
         new AsyncExecutionResult( saveResult( result.data, requestCx, serverCx, variable.getGridSpec(section), inputVar.getVariableMetadata(serverCx), inputVar.getDatasetMetadata(serverCx) ) )
       }
       else new BlockingExecutionResult( operationCx.identifier, List(inputVar.getSpec), variable.getGridSpec(section), result.data )
+    }
+  }
+
+  class metadata extends Kernel {
+    val inputs = List(Port("input fragment", "1"))
+    val outputs = List(Port("result", "1"))
+    override val description = "Average over Input Fragment"
+
+    def execute(operationCx: OperationContext, requestCx: RequestContext, serverCx: ServerContext): ExecutionResult = {
+      import nasa.nccs.cds2.loaders.Collections
+      val result: (String, xml.Node) = requestCx.inputs.headOption match {
+        case None => ("Collection", Collections.toXml)
+        case Some((key, inputSpec)) =>
+          inputSpec.data.collection match {
+            case "" => ("Collection", Collections.toXml)
+            case collection =>
+              inputSpec.data.varname match {
+                case "" => (collection, Collections.toXml(collection))
+                case vname => (collection + ":" + vname, serverCx.getVariable(collection, vname).toXml)
+              }
+          }
+      }
+      result match {
+        case (id, resultXml) => new XmlExecutionResult("Metadata~" + id, resultXml )
+      }
     }
   }
 

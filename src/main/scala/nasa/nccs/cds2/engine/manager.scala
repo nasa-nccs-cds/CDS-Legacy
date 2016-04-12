@@ -56,7 +56,7 @@ class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
 
   private def produceDataset(collection: String, varName: String)(p: Promise[CDSDataset]): Unit = {
     val datasetName = collection.toLowerCase
-    Collections.CreateIP.get(datasetName) match {
+    Collections.datasets.get(datasetName) match {
       case Some(collection) =>
         val dataset = CDSDataset.load(datasetName, collection, varName)
         logger.info("Completed reading dataset (%s:%s) ".format( collection, varName ))
@@ -353,6 +353,15 @@ object SampleTaskRequests {
     TaskRequest( "CDS.anomaly", dataInputs )
   }
 
+  def getMetadataRequest( level: Int ): TaskRequest = {
+    val dataInputs: Map[String, Seq[Map[String, Any]]] = level match {
+      case 0 => Map()
+      case 1 => Map( "variable" -> List ( Map( "uri" -> "collection://MERRA/mon/atmos" ) ) )
+      case 2 => Map( "variable" -> List ( Map( "uri" -> "collection://MERRA/mon/atmos", "name" -> "t:v0" ) ) )
+    }
+    TaskRequest( "CDS.metadata", dataInputs )
+  }
+
   def getCacheRequest: TaskRequest = {
     val dataInputs = Map(
       "domain" -> List( Map("name" -> "d0",  "lev" -> Map("start" -> 100000, "end" -> 100000, "system" -> "values"))),
@@ -378,10 +387,10 @@ object SampleTaskRequests {
 
   def getAnomalyArrayTest: TaskRequest = {
     val dataInputs = Map(
-      "domain" ->  List(Map("name" -> "d0", "lat" -> Map("start" -> -10.0, "end" -> 30.0, "system" -> "values"), "lon" -> Map("start" -> 0.0, "end" -> 60.0, "system" -> "values"), "lev" -> Map("start" -> 100000, "end" -> 100000, "system" -> "values"))),
+      "domain" ->  List( Map("name" -> "d1", "lat" -> Map("start" -> 3, "end" -> 3, "system" -> "indices")), Map("name" -> "d0", "lat" -> Map("start" -> 3, "end" -> 3, "system" -> "indices"), "lon" -> Map("start" -> 3, "end" -> 3, "system" -> "indices"), "lev" -> Map("start" -> 30, "end" -> 30, "system" -> "indices"))),
       "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "ta:v0", "domain" -> "d0")),
-      "operation" -> List(Map("unparsed" -> "(v0,axes:t)")))
-    TaskRequest( "CDS.anomaly", dataInputs )
+      "operation" -> List(Map("unparsed" -> "CDS.anomaly(v0,axes:t),CDS.subset(v0,domain:d1)")))
+    TaskRequest( "CDS.workflow", dataInputs )
   }
 
   def getAveArray: TaskRequest = {
@@ -402,7 +411,7 @@ object SampleTaskRequests {
   def getFragmentSync( dataContainer: DataContainer, domainContainer: DomainContainer): Option[PartitionedFragment] = {
     val datasetName = dataContainer.getSource.collection.toLowerCase
     var varName = dataContainer.getSource.name
-    Collections.CreateIP.get(datasetName) match {
+    Collections.datasets.get(datasetName) match {
       case Some(collection) =>
         val dataset = CDSDataset.load(datasetName, collection, varName)
         val variable = dataset.loadVariable(varName)
@@ -475,12 +484,31 @@ object executionTest extends App {
   }
 }
 
+object execCacheTest extends App {
+  val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
+  val run_args = Map( "async" -> "false" )
+  val request = SampleTaskRequests.getCacheRequest
+  val final_result = cds2ExecutionManager.blockingExecute(request, run_args)
+  val printer = new scala.xml.PrettyPrinter(200, 3)
+  println( ">>>> Final Result: " + printer.format(final_result) )
+}
+
+object execMetadataTest extends App {
+  val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
+  val run_args = Map( "async" -> "false" )
+  val request = SampleTaskRequests.getMetadataRequest(1)
+  val final_result = cds2ExecutionManager.blockingExecute(request, run_args)
+  val printer = new scala.xml.PrettyPrinter(200, 3)
+  println( ">>>> Final Result: " + printer.format(final_result) )
+}
+
 object execAnomalyTest extends App {
   val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
   val run_args = Map( "async" -> "false" )
   val request = SampleTaskRequests.getAnomalyArrayTest
   val final_result = cds2ExecutionManager.blockingExecute(request, run_args)
-  println( ">>>> Final Result: " + final_result.toString() )
+  val printer = new scala.xml.PrettyPrinter(200, 3)
+  println( ">>>> Final Result: " + printer.format(final_result) )
 }
 
 object execAnomalyWithCacheTest extends App {
@@ -502,7 +530,8 @@ object execAnomalyWithCacheTest extends App {
 
   val request = SampleTaskRequests.getAnomalyTest
   val final_result = cds2ExecutionManager.blockingExecute(request, run_args)
-  println( ">>>> Final Result: " + final_result.toString() )
+  val printer = new scala.xml.PrettyPrinter(200, 3)
+  println( ">>>> Final Result: " + printer.format(final_result) )
 }
 
 object parseTest extends App {
@@ -523,6 +552,13 @@ object arrayTest extends App {
   println( "data = [ %s ]".format( tensor.data.mkString(",")) )
   println( "data0 = %s".format( s0.tensor.getFloat( Array(0,0,0))) )
   println( "data1 = %s".format( s0.tensor.getFloat( Array(0,0,1))) )
+}
+
+object arrayBroadcastTest extends App {
+  val tensor = Nd4j.create( Array(1.0), Array(1,1,1))
+  val new_tensor = tensor.broadcast(5,1,1)
+  println( "bdata = %s ".format( new_tensor.data.asFloat.mkString("[ ", ", ", " ]") ) )
+
 }
 
 
