@@ -146,7 +146,7 @@ class CollectionDataCacheMgr extends nasa.nccs.esgf.process.DataLoader {
     variableFuture.flatMap( variable => {
       val fragSpec = variable.createFragmentSpec(domain_container.axes)
       val axisSpecs: AxisIndices = variable.getAxisIndices(dataContainer.getOpSpecs)
-      for (frag <- getFragmentFuture(fragSpec)) yield new OperationInputSpec(fragSpec, axisSpecs)
+      for (frag <- getFragmentFuture(fragSpec)) yield new OperationInputSpec( fragSpec, axisSpecs)
     })
   }
 
@@ -348,7 +348,7 @@ object SampleTaskRequests {
   def getTimeSliceAnomaly: TaskRequest = {
     val dataInputs = Map(
       "domain" -> List( Map("name" -> "d0", "lat" -> Map("start" -> 10, "end" -> 10, "system" -> "values"), "lon" -> Map("start" -> 10, "end" -> 10, "system" -> "values"), "lev" -> Map("start" -> 8, "end" -> 8, "system" -> "indices"))),
-      "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "t:v0", "domain" -> "d0")),
+      "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "ta:v0", "domain" -> "d0")),
       "operation" -> List(Map("unparsed" -> "( v0, axes: t )")))
     TaskRequest( "CDS.anomaly", dataInputs )
   }
@@ -356,8 +356,7 @@ object SampleTaskRequests {
   def getMetadataRequest( level: Int ): TaskRequest = {
     val dataInputs: Map[String, Seq[Map[String, Any]]] = level match {
       case 0 => Map()
-      case 1 => Map( "variable" -> List ( Map( "uri" -> "collection://MERRA/mon/atmos" ) ) )
-      case 2 => Map( "variable" -> List ( Map( "uri" -> "collection://MERRA/mon/atmos", "name" -> "t:v0" ) ) )
+      case 1 => Map( "variable" -> List ( Map( "uri" -> "collection://MERRA/mon/atmos", "name" -> "ta:v0" ) ) )
     }
     TaskRequest( "CDS.metadata", dataInputs )
   }
@@ -496,7 +495,7 @@ object execCacheTest extends App {
 object execMetadataTest extends App {
   val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
   val run_args = Map( "async" -> "false" )
-  val request = SampleTaskRequests.getMetadataRequest(1)
+  val request = SampleTaskRequests.getMetadataRequest(0)
   val final_result = cds2ExecutionManager.blockingExecute(request, run_args)
   val printer = new scala.xml.PrettyPrinter(200, 3)
   println( ">>>> Final Result: " + printer.format(final_result) )

@@ -24,7 +24,7 @@ object Collections {
     "ecmwf/6hr/atmos" -> Collection( ctype="dods", url="http://dataserver.nccs.nasa.gov/thredds/dodsC/bypass/CREATE-IP/ECMWF/6hr/atmos", vars=List( "va", "ta", "clt", "ua", "psl", "hus"  )  )
   )
   def toXml(): xml.Elem = {
-    <collections> { datasets.keys.map( id => <collection id={id} /> ) } </collections>
+    <collections> { for( (id,collection) <- datasets ) yield <collection id={id}> {collection.vars.mkString(",")} </collection>} </collections>
   }
   def toXml( collectionId: String ): xml.Elem = {
     datasets.get( collectionId ) match {
