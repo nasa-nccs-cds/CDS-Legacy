@@ -33,6 +33,7 @@ object Library {
   val joda           = "joda-time"          % "joda-time"       % "2.8.1"
   val natty          = "com.joestelmach"    % "natty"           % "0.11"
   val guava          = "com.google.guava"   % "guava"           % "18.0"
+  val geotools       = "org.geotools"      %  "gt-shapefile"    % "15-SNAPSHOT"
   val breeze         = "org.scalanlp"      %% "breeze"          % "0.12"
   val kernelmod      = "nasa.nccs"         %% "kermodbase"      % "1.0-SNAPSHOT"
   val cdapi          = "nasa.nccs"         %% "cdapi"           % "1.0-SNAPSHOT"
