@@ -1,12 +1,12 @@
 package nasa.nccs.cds2.modules.CDS
 
-import nasa.nccs.cdapi.cdm.{BinnedArrayFactory, KernelDataInput, PartitionedFragment, aveSliceAccumulator}
+import nasa.nccs.cdapi.cdm._
 import nasa.nccs.cdapi.kernels._
 import nasa.nccs.cdapi.tensors.Nd4jMaskedTensor
 import nasa.nccs.cds2.kernels.KernelTools
 import nasa.nccs.esgf.process._
 import org.nd4j.linalg.api.ndarray.INDArray
-
+import ucar.ma2
 import scala.reflect.runtime._
 import scala.reflect.runtime.universe._
 
@@ -48,14 +48,20 @@ class CDS extends KernelModule with KernelTools {
     override val description = "Average over Input Fragment"
 
     def execute( operationCx: OperationContext, requestCx: RequestContext, serverCx: ServerContext ): ExecutionResult = {
-      val inputVar: KernelDataInput  =  inputVars( operationCx, requestCx, serverCx ).head
-      val optargs: Map[String,String] =  operationCx.getConfiguration
-      val input_array = inputVar.dataFragment.data
+      val inputVar: KernelDataInput = inputVars(operationCx, requestCx, serverCx).head
+      val optargs: Map[String, String] = operationCx.getConfiguration
+      val input_array: Nd4jMaskedTensor = inputVar.dataFragment.data
       val axisSpecs = inputVar.axisIndices
       val async = requestCx.config("async", "false").toBoolean
       val axes = axisSpecs.getAxes
       val t10 = System.nanoTime
-      val mean_val_masked = input_array.mean( axes:_* )
+      val weighting_type = requestCx.config("weights", "cosine")
+      val weightsOpt: Option[Nd4jMaskedTensor] = weighting_type match {
+        case "" => None
+        case "cosine" => Some( input_array.computeWeights( weighting_type, Map( 'y' -> serverCx.getAxisData( inputVar.getSpec, 'y' ) ) ) )
+        case x => throw new NoSuchElementException( "Can't recognize weighting method: %s".format( x ))
+      }
+      val mean_val_masked: Nd4jMaskedTensor = input_array.mean( weightsOpt, axes:_* )
       val t11 = System.nanoTime
       logger.info("Mean_val_masked, time = %.4f s, result = %s".format( (t11-t10)/1.0E9, mean_val_masked.toString ) )
       val variable = serverCx.getVariable( inputVar.getSpec )
@@ -167,7 +173,12 @@ class CDS extends KernelModule with KernelTools {
       val async = requestCx.config("async", "false").toBoolean
       val axes = axisSpecs.getAxes
       val t10 = System.nanoTime
-      val mean_val_masked = input_array.mean( axisSpecs.getAxes:_* )
+      val weighting_type = requestCx.config("weights", "cosine")
+      val weightsOpt: Option[Nd4jMaskedTensor] = weighting_type match {
+        case "" => None
+        case wtype => Some( input_array.computeWeights( wtype, Map( 'y' -> serverCx.getAxisData( inputVar.getSpec, 'y' ) ) ) )
+      }
+      val mean_val_masked: Nd4jMaskedTensor = input_array.mean( weightsOpt, axes:_* )
       val bc_mean_val_masked = mean_val_masked.broadcast( input_array.shape:_* )
       val anomaly_result = input_array - bc_mean_val_masked
       val variable = serverCx.getVariable( inputVar.getSpec )
