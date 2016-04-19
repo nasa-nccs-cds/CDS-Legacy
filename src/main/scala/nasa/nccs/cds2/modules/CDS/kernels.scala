@@ -55,7 +55,7 @@ class CDS extends KernelModule with KernelTools {
       val async = requestCx.config("async", "false").toBoolean
       val axes = axisSpecs.getAxes
       val t10 = System.nanoTime
-      val weighting_type = requestCx.config("weights", "cosine")
+      val weighting_type = requestCx.config("weights", "")
       val weightsOpt: Option[Nd4jMaskedTensor] = weighting_type match {
         case "" => None
         case "cosine" => Some( input_array.computeWeights( weighting_type, Map( 'y' -> serverCx.getAxisData( inputVar.getSpec, 'y' ) ) ) )
@@ -173,7 +173,7 @@ class CDS extends KernelModule with KernelTools {
       val async = requestCx.config("async", "false").toBoolean
       val axes = axisSpecs.getAxes
       val t10 = System.nanoTime
-      val weighting_type = requestCx.config("weights", "cosine")
+      val weighting_type = requestCx.config("weights", "")
       val weightsOpt: Option[Nd4jMaskedTensor] = weighting_type match {
         case "" => None
         case wtype => Some( input_array.computeWeights( wtype, Map( 'y' -> serverCx.getAxisData( inputVar.getSpec, 'y' ) ) ) )
