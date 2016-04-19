@@ -370,9 +370,9 @@ object SampleTaskRequests {
 
   def getSpatialAve: TaskRequest = {
     val dataInputs = Map(
-      "domain" -> List( Map("name" -> "d0", "lev" -> Map("start" -> 8, "end" -> 8, "system" -> "indices"))),
+      "domain" -> List( Map("name" -> "d0", "lev" -> Map("start" -> 8, "end" -> 8, "system" -> "indices"), "time" -> Map("start" -> 3, "end" -> 3, "system" -> "indices"))),
       "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "ta:v0", "domain" -> "d0")),
-      "operation" -> List(Map("unparsed" -> "( v0, axes: xy, y.weights: inverse_cosine )")))
+      "operation" -> List(Map("unparsed" -> "( v0, axes: xy, weights: cosine )")))
     TaskRequest( "CDS.average", dataInputs )
   }
 
@@ -505,6 +505,15 @@ object execAnomalyTest extends App {
   val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
   val run_args = Map( "async" -> "false" )
   val request = SampleTaskRequests.getAnomalyArrayTest
+  val final_result = cds2ExecutionManager.blockingExecute(request, run_args)
+  val printer = new scala.xml.PrettyPrinter(200, 3)
+  println( ">>>> Final Result: " + printer.format(final_result) )
+}
+
+object execSpatialAveTest extends App {
+  val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
+  val run_args = Map( "async" -> "false" )
+  val request = SampleTaskRequests.getSpatialAve
   val final_result = cds2ExecutionManager.blockingExecute(request, run_args)
   val printer = new scala.xml.PrettyPrinter(200, 3)
   println( ">>>> Final Result: " + printer.format(final_result) )
