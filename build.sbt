@@ -18,8 +18,6 @@ resolvers ++= Seq( "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases", 
 
 libraryDependencies ++= Dependencies.scala
 
-libraryDependencies ++= Dependencies.ndarray
-
 libraryDependencies ++= Dependencies.kernels
 
 libraryDependencies ++= Dependencies.spark

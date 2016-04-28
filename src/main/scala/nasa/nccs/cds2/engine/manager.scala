@@ -1,14 +1,10 @@
 package nasa.nccs.cds2.engine
 import java.io.{PrintWriter, StringWriter}
-import nasa.nccs.cdapi.cdm
 import nasa.nccs.cdapi.cdm._
-import nasa.nccs.cdapi.tensors.Nd4jMaskedTensor
 import nasa.nccs.cds2.loaders.Collections
 import nasa.nccs.esgf.process._
-import org.nd4j.linalg.factory.Nd4j
-import org.slf4j.LoggerFactory
+import org.slf4j.{ LoggerFactory, Logger }
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.collection.{concurrent, mutable}
 import nasa.nccs.utilities.cdsutils
 import nasa.nccs.cds2.kernels.KernelMgr
 import nasa.nccs.cdapi.kernels._
@@ -297,8 +293,18 @@ class CDS2ExecutionManager( val serverConfiguration: Map[String,String] ) {
     new ExecutionResults( request.workflows.flatMap(workflow => workflow.operations.map( operationExecution( _, requestCx ))) )
   }
 
-  def operationExecution(operationCx: OperationContext, requestCx: RequestContext): ExecutionResult = {
-    getKernel( operationCx.name.toLowerCase ).execute( operationCx, requestCx, serverContext )
+  def executeUtility( operationCx: OperationContext, requestCx: RequestContext, serverCx: ServerContext ): ExecutionResult = {
+    val result: xml.Node =  <result> {"Completed executing utility " + operationCx.name.toLowerCase } </result>
+    new XmlExecutionResult( operationCx.name.toLowerCase + "~u0", result )
+  }
+
+  def operationExecution( operationCx: OperationContext, requestCx: RequestContext ): ExecutionResult = {
+    val opName = operationCx.name.toLowerCase
+    val module_name = opName.split('.')(0)
+    module_name match {
+      case "util" => executeUtility( operationCx, requestCx, serverContext )
+      case x => getKernel( opName ).execute( operationCx, requestCx, serverContext )
+    }
   }
 }
 
@@ -370,10 +376,26 @@ object SampleTaskRequests {
 
   def getSpatialAve: TaskRequest = {
     val dataInputs = Map(
-      "domain" -> List( Map("name" -> "d0", "lev" -> Map("start" -> 8, "end" -> 8, "system" -> "indices"), "time" -> Map("start" -> 3, "end" -> 3, "system" -> "indices"))),
+      "domain" -> List( Map("name" -> "d0", "lev" -> Map("start" -> 30, "end" -> 30, "system" -> "indices"), "time" -> Map("start" -> 3, "end" -> 3, "system" -> "indices"))),
       "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "ta:v0", "domain" -> "d0")),
-      "operation" -> List(Map("unparsed" -> "( v0, axes: xy, weights: cosine )")))
+      "operation" -> List(Map("unparsed" -> "( v0, axes: xy )")))
     TaskRequest( "CDS.average", dataInputs )
+  }
+
+  def getMax: TaskRequest = {
+    val dataInputs = Map(
+      "domain" -> List( Map("name" -> "d0", "lev" -> Map("start" -> 30, "end" -> 30, "system" -> "indices"), "time" -> Map("start" -> 3, "end" -> 3, "system" -> "indices"))),
+      "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "ta:v0", "domain" -> "d0")),
+      "operation" -> List(Map("unparsed" -> "( v0, axes: xy )")))
+    TaskRequest( "CDS.max", dataInputs )
+  }
+
+  def getMin: TaskRequest = {
+    val dataInputs = Map(
+      "domain" -> List( Map("name" -> "d0", "lev" -> Map("start" -> 30, "end" -> 30, "system" -> "indices"), "time" -> Map("start" -> 3, "end" -> 3, "system" -> "indices"))),
+      "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "ta:v0", "domain" -> "d0")),
+      "operation" -> List(Map("unparsed" -> "( v0, axes: xy )")))
+    TaskRequest( "CDS.min", dataInputs )
   }
 
   def getAnomalyTest: TaskRequest = {
@@ -519,6 +541,24 @@ object execSpatialAveTest extends App {
   println( ">>>> Final Result: " + printer.format(final_result) )
 }
 
+object execMaxTest extends App {
+  val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
+  val run_args = Map( "async" -> "false" )
+  val request = SampleTaskRequests.getMax
+  val final_result = cds2ExecutionManager.blockingExecute(request, run_args)
+  val printer = new scala.xml.PrettyPrinter(200, 3)
+  println( ">>>> Final Result: " + printer.format(final_result) )
+}
+
+object execMinTest extends App {
+  val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
+  val run_args = Map( "async" -> "false" )
+  val request = SampleTaskRequests.getMin
+  val final_result = cds2ExecutionManager.blockingExecute(request, run_args)
+  val printer = new scala.xml.PrettyPrinter(200, 3)
+  println( ">>>> Final Result: " + printer.format(final_result) )
+}
+
 object execAnomalyWithCacheTest extends App {
   val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
   val run_args = Map( "async" -> "false" )
@@ -548,26 +588,6 @@ object parseTest extends App {
   println( r )
 }
 
-object arrayTest extends App {
-  val array = Nd4j.create( Array.fill[Float](40)(1f), Array(10,2,2))
-  val tensor = new Nd4jMaskedTensor( array, Float.MaxValue )
-  array.putScalar( Array(1,1,0), 3.0 )
-  array.putScalar( Array(1,1,1), 3.0 )
-  println( "init data = [ %s ]".format( tensor.data.mkString(",")) )
-  val s0 = tensor.slice( 1, 0 )
-  println( "shape = %s, offset = %d".format( s0.shape.mkString(","), s0.tensor.offset ) )
-  s0.tensor.putScalar( Array(0,1,0), 2.0 )
-  println( "data = [ %s ]".format( tensor.data.mkString(",")) )
-  println( "data0 = %s".format( s0.tensor.getFloat( Array(0,0,0))) )
-  println( "data1 = %s".format( s0.tensor.getFloat( Array(0,0,1))) )
-}
-
-object arrayBroadcastTest extends App {
-  val tensor = Nd4j.create( Array(1.0), Array(1,1,1))
-  val new_tensor = tensor.broadcast(5,1,1)
-  println( "bdata = %s ".format( new_tensor.data.asFloat.mkString("[ ", ", ", " ]") ) )
-
-}
 
 
 

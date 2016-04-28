@@ -1,6 +1,5 @@
 package nasa.nccs.cds2.engine.spark
 
-import nasa.nccs.cdapi.kernels.DataFragment
 import nasa.nccs.cdapi.cdm
 import nasa.nccs.cdapi.cdm.PartitionedFragment
 import nasa.nccs.cds2.engine.{CollectionDataCacheMgr, SampleTaskRequests, CDS2ExecutionManager}
