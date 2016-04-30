@@ -39,6 +39,8 @@ object Library {
   val cdapi          = "nasa.nccs"         %% "cdapi"           % "1.0-SNAPSHOT"
   val sprayCache     = "io.spray"       % "spray-caching_2.11" % "1.3.3"
   val sprayUtil      = "io.spray"       % "spray-util_2.11"    % "1.3.3"
+  val scalactic      = "org.scalactic" %% "scalactic" % "2.2.6"
+  val scalatest      = "org.scalatest" %% "scalatest" % "2.2.6" % "test"
 }
 
 object Dependencies {
@@ -51,7 +53,7 @@ object Dependencies {
     scalaTest      % "test",
     mockitoAll     % "test"
   )
-  val scala = Seq( logbackClassic, joda, natty )
+  val scala = Seq( logbackClassic, joda, natty, scalactic, scalatest )
 
   val spark = Seq( sparkCore )
 

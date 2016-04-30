@@ -13,8 +13,9 @@ lazy val root = project in file(".")
 //  ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) }
 
 resolvers += "Unidata maven repository" at "http://artifacts.unidata.ucar.edu/content/repositories/unidata-releases"
-
-resolvers ++= Seq( "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases", "spray repo" at "http://repo.spray.io" )
+resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"
+resolvers += "spray repo" at "http://repo.spray.io"
+resolvers += "Artima Maven Repository" at "http://repo.artima.com/releases"
 
 libraryDependencies ++= Dependencies.scala
 
