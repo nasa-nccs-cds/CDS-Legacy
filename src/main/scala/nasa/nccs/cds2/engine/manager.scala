@@ -376,7 +376,7 @@ object SampleTaskRequests {
 
   def getSpatialAve: TaskRequest = {
     val dataInputs = Map(
-      "domain" -> List( Map("name" -> "d0", "lev" -> Map("start" -> 3, "end" -> 3, "system" -> "indices"), "time" -> Map("start" -> 3, "end" -> 3, "system" -> "indices"))),
+      "domain" -> List( Map("name" -> "d0", "lev" -> Map("start" -> 20, "end" -> 20, "system" -> "indices"), "time" -> Map("start" -> 0, "end" -> 0, "system" -> "indices"))),
       "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "ta:v0", "domain" -> "d0")),
       "operation" -> List(Map("unparsed" -> "( v0, axes: xy )")))
     TaskRequest( "CDS.average", dataInputs )
@@ -384,16 +384,16 @@ object SampleTaskRequests {
 
   def getMax: TaskRequest = {
     val dataInputs = Map(
-      "domain" -> List( Map("name" -> "d0", "lev" -> Map("start" -> 5, "end" -> 5, "system" -> "indices"), "time" -> Map("start" -> 10, "end" -> 10, "system" -> "indices"))),
-      "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "ta:v0", "domain" -> "d0")),
+      "domain" -> List( Map("name" -> "d0", "lev" -> Map("start" -> 20, "end" -> 20, "system" -> "indices"), "time" -> Map("start" -> 0, "end" -> 0, "system" -> "indices"))),
+      "variable" -> List(Map("uri" -> "collection://merra/mon/atmos", "name" -> "ta:v0", "domain" -> "d0")),
       "operation" -> List(Map("unparsed" -> "( v0, axes: xy )")))
     TaskRequest( "CDS.max", dataInputs )
   }
 
   def getMin: TaskRequest = {
     val dataInputs = Map(
-      "domain" -> List( Map("name" -> "d0", "lev" -> Map("start" -> 3, "end" -> 3, "system" -> "indices"), "time" -> Map("start" -> 3, "end" -> 3, "system" -> "indices"))),
-      "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "ta:v0", "domain" -> "d0")),
+      "domain" -> List( Map("name" -> "d0", "lev" -> Map("start" -> 20, "end" -> 20, "system" -> "indices"), "time" -> Map("start" -> 0, "end" -> 0, "system" -> "indices"))),
+      "variable" -> List(Map("uri" -> "collection://merra/mon/atmos", "name" -> "ta:v0", "domain" -> "d0")),
       "operation" -> List(Map("unparsed" -> "( v0, axes: xy )")))
     TaskRequest( "CDS.min", dataInputs )
   }
