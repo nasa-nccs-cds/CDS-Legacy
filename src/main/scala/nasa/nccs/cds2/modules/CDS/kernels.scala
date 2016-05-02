@@ -37,6 +37,29 @@ class CDS extends KernelModule with KernelTools {
     }
   }
 
+  class const extends Kernel {
+    val inputs = List(Port("input fragment", "1"))
+    val outputs = List(Port("result", "1"))
+    override val description = "Sets Input Fragment to constant value"
+
+    def execute( operationCx: OperationContext, requestCx: RequestContext, serverCx: ServerContext ): ExecutionResult = {
+      val inputVar: KernelDataInput = inputVars(operationCx, requestCx, serverCx).head
+      val input_array: CDFloatArray = inputVar.dataFragment.data
+      val async = requestCx.config("async", "false").toBoolean
+      val sval = operationCx.config("value", "1.0" )
+      val t10 = System.nanoTime
+      val max_val_masked: CDFloatArray = ( input_array := sval.toFloat )
+      val t11 = System.nanoTime
+      logger.info("Constant op, time = %.4f s, result = %s".format( (t11-t10)/1.0E9, max_val_masked.toString ) )
+      val variable = serverCx.getVariable( inputVar.getSpec )
+      val section = inputVar.getSpec.getReducedSection(Set())
+      if(async) {
+        new AsyncExecutionResult( saveResult( max_val_masked, requestCx, serverCx, variable.getGridSpec(section), inputVar.getVariableMetadata(serverCx), inputVar.getDatasetMetadata(serverCx) ) )
+      }
+      else new BlockingExecutionResult( operationCx.identifier, List(inputVar.getSpec), variable.getGridSpec(section), max_val_masked )
+    }
+  }
+
   class min extends Kernel {
     val inputs = List(Port("input fragment", "1"))
     val outputs = List(Port("result", "1"))

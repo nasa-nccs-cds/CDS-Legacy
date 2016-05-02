@@ -1,18 +1,26 @@
 package nasa.nccs.cds2.engine
-import java.io.{PrintWriter, StringWriter}
+import java.io.{IOException, PrintWriter, StringWriter}
+
 import nasa.nccs.cdapi.cdm._
 import nasa.nccs.cds2.loaders.Collections
 import nasa.nccs.esgf.process._
-import org.slf4j.{ LoggerFactory, Logger }
+import org.slf4j.{Logger, LoggerFactory}
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import nasa.nccs.utilities.cdsutils
 import nasa.nccs.cds2.kernels.KernelMgr
 import nasa.nccs.cdapi.kernels._
+
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Future, Promise, Await}
-import scala.util.{ Try, Success, Failure }
+import scala.concurrent.{Await, Future, Promise}
+import scala.util.{Failure, Success, Try}
 import java.util.concurrent.atomic.AtomicReference
+
+import nasa.nccs.cdapi.tensors.{CDArray, CDFloatArray}
 import spray.caching._
+import ucar.{ma2, nc2}
+import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 
 class Counter(start: Int = 0) {
@@ -310,6 +318,23 @@ class CDS2ExecutionManager( val serverConfiguration: Map[String,String] ) {
 
 object SampleTaskRequests {
 
+  def createTestData() = {
+    var axes = Array("time","lev","lat","lon")
+    var shape = Array(1,1,180,360)
+    val maskedTensor: CDFloatArray = CDArray.factory( shape, Array.fill[Float](180*360)(1f), Float.MaxValue)
+    val varname = "ta"
+    val resultFile = "/tmp/SyntheticTestData.nc"
+    val writer: nc2.NetcdfFileWriter = nc2.NetcdfFileWriter.createNew(nc2.NetcdfFileWriter.Version.netcdf4, resultFile )
+    val dims: IndexedSeq[nc2.Dimension] = (0 until shape.length).map( idim => writer.addDimension(null, axes(idim), maskedTensor.getShape(idim)))
+    val variable: nc2.Variable = writer.addVariable(null, varname, ma2.DataType.FLOAT, dims.toList)
+    variable.addAttribute( new nc2.Attribute( "missing_value", maskedTensor.getInvalid ) )
+    writer.create()
+    writer.write( variable, maskedTensor )
+    writer.close()
+    println( "Writing result to file '%s'".format(resultFile) )
+  }
+
+
   def getAveTimeseries: TaskRequest = {
     import nasa.nccs.esgf.process.DomainAxis.Type._
     val workflows = List[WorkflowContainer]( new WorkflowContainer( operations = List( new OperationContext( identifier = "CDS.average~ivar#1",  name ="CDS.average", result = "ivar#1", inputs = List("v0"), Map("axis" -> "t") ) ) ) )
@@ -374,12 +399,20 @@ object SampleTaskRequests {
     TaskRequest( "util.cache", dataInputs )
   }
 
-  def getSpatialAve: TaskRequest = {
+  def getSpatialAve(collection: String, varname: String, weighting: String, level_index: Int = 0, time_index: Int = 0): TaskRequest = {
     val dataInputs = Map(
-      "domain" -> List( Map("name" -> "d0", "lev" -> Map("start" -> 20, "end" -> 20, "system" -> "indices"), "time" -> Map("start" -> 0, "end" -> 0, "system" -> "indices"))),
-      "variable" -> List(Map("uri" -> "collection://MERRA/mon/atmos", "name" -> "ta:v0", "domain" -> "d0")),
-      "operation" -> List(Map("unparsed" -> "( v0, axes: xy )")))
+      "domain" -> List( Map("name" -> "d0", "lev" -> Map("start" -> level_index, "end" -> level_index, "system" -> "indices"), "time" -> Map("start" -> time_index, "end" -> time_index, "system" -> "indices"))),
+      "variable" -> List(Map("uri" -> s"collection:/$collection", "name" -> s"$varname:v0", "domain" -> "d0")),
+      "operation" -> List(Map("unparsed" -> s"( v0, axes: xy, weights:$weighting)")))
     TaskRequest( "CDS.average", dataInputs )
+  }
+
+  def getConstant(collection: String, varname: String, level_index: Int = 0 ): TaskRequest = {
+    val dataInputs = Map(
+      "domain" -> List( Map("name" -> "d0", "lev" -> Map("start" -> level_index, "end" -> level_index, "system" -> "indices"), "time" -> Map("start" -> 10, "end" -> 10, "system" -> "indices"))),
+      "variable" -> List(Map("uri" -> s"collection:/$collection", "name" -> s"$varname:v0", "domain" -> "d0")),
+      "operation" -> List(Map("unparsed" -> s"( v0 )")))
+    TaskRequest( "CDS.const", dataInputs )
   }
 
   def getMax: TaskRequest = {
@@ -525,20 +558,46 @@ object execMetadataTest extends App {
 
 object execAnomalyTest extends App {
   val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
-  val run_args = Map( "async" -> "false" )
+  val run_args = Map( "async" -> "true" )
   val request = SampleTaskRequests.getAnomalyArrayTest
   val final_result = cds2ExecutionManager.blockingExecute(request, run_args)
   val printer = new scala.xml.PrettyPrinter(200, 3)
   println( ">>>> Final Result: " + printer.format(final_result) )
 }
 
+
+
 object execSpatialAveTest extends App {
   val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
   val run_args = Map( "async" -> "false" )
-  val request = SampleTaskRequests.getSpatialAve
+  val request = SampleTaskRequests.getSpatialAve( "/synth/constant-1", "ta", "" )
   val final_result = cds2ExecutionManager.blockingExecute(request, run_args)
   val printer = new scala.xml.PrettyPrinter(200, 3)
   println( ">>>> Final Result: " + printer.format(final_result) )
+}
+
+object execConstantTest extends App {
+  val cds2ExecutionManager = new CDS2ExecutionManager(Map.empty)
+  val async = true
+  val run_args = Map( "async" -> async.toString )
+  val request = SampleTaskRequests.getConstant( "/MERRA/mon/atmos", "ta", 40 )
+  if(async) {
+    cds2ExecutionManager.executeAsync(request, run_args) match {
+      case ( resultId: String, futureResult: Future[ExecutionResults] ) =>
+        val result = Await.result (futureResult, Duration.Inf)
+        println(">>>> Async Result: " + result )
+      case x => println( "Unrecognized result from executeAsync: " + x.toString )
+    }
+  }
+  else {
+    val final_result = cds2ExecutionManager.blockingExecute(request, run_args)
+    val printer = new scala.xml.PrettyPrinter(200, 3)
+    println(">>>> Final Result: " + printer.format(final_result))
+  }
+}
+
+object execTestDataCreation extends App {
+  SampleTaskRequests.createTestData
 }
 
 object execMaxTest extends App {
